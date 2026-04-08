@@ -2,8 +2,8 @@
 title: "Society of Insect Welfare - Literature Dashboard"
 output: 
   flexdashboard::flex_dashboard:
-    orientation: columns
-    vertical_layout: fill
+    orientation: rows
+    vertical_layout: scroll
     theme: lumen
 ---
 
@@ -22,10 +22,271 @@ datos <- read_csv("Gallery_Library.csv") %>%
   mutate(ID_Articulo = row_number())
 ```
 
-Column {data-width=600}
+
+Row {data-height=500}
 -----------------------------------------------------------------------
 
-### Topic Co-occurrence Network (Interactive)
+### Top 15 Most frequent topics {data-width=600}
+
+```{r}
+# ==============================================================================
+# PLOT 2: TOP 15 MOST FREQUENT TOPICS
+# ==============================================================================
+# Since the "Topics" column contains several topics separated by commas, 
+# we need to separate them to count them individually.
+
+grafico_temas <- datos %>%
+  # Remove rows without topics
+  filter(!is.na(Topics)) %>% 
+  # Separate the Topics column into multiple rows (using the comma as separator)
+  separate_rows(Topics, sep = ",") %>% 
+  # Remove extra whitespaces at the beginning and end
+  mutate(Topics = str_trim(Topics)) %>% 
+  # Count the frequency of each topic and sort from highest to lowest
+  count(Topics, sort = TRUE) %>% 
+  # Take only the top 15 topics
+  slice_max(order_by = n, n = 15) %>% 
+  
+  # Create the plot
+  ggplot(aes(x = reorder(Topics, n), y = n)) +
+  geom_col(fill = "#55A868", alpha = 0.8) +
+  coord_flip() + # Flip the bars so the texts are easier to read
+  theme_minimal() +
+  labs(
+    title = "Top 15 Most Frequent Topics in the Literature",
+    x = "Category / Topic",
+    y = "Number of Articles"
+  )
+
+# Show the plot
+print(grafico_temas)
+
+```
+
+
+### Word Cloud of Article Titles Row {data-height=300}
+
+```{r}
+data("stop_words")
+
+datos %>%
+  filter(!is.na(Title)) %>%
+  unnest_tokens(word, Title) %>%
+  anti_join(stop_words, by = "word") %>%
+  filter(!word %in% c("evaluation", "effects", "effect", "study", "studies"),
+         !str_detect(word, "^[0-9]+$")) %>% 
+  mutate(word = case_when(
+    word %in% c("animal", "animals") ~ "animals",
+    word %in% c("insect", "insects") ~ "insects",
+    word %in% c("invertebrate", "invertebrates") ~ "invertebrates",
+    word %in% c("anesthesia", "anesthetics", "anesthetic", 
+                "anaesthesia", "anaesthetics", "anaesthetic") ~ "anesthesia",
+    TRUE ~ word 
+  )) %>%
+  count(word, sort = TRUE) %>%
+  slice_max(order_by = n, n = 50) %>%
+  ggplot(aes(label = word, size = n, color = n)) +
+  geom_text_wordcloud_area(shape = "circle") +
+  scale_size_area(max_size =20) + 
+  scale_color_gradient(low = "#4C72B0", high = "#C44E52") + 
+  theme_minimal()
+```
+
+
+Row {data-height=500}
+-----------------------------------------------------------------------
+### Evolution of publicacions per year {data-width=300}
+
+
+```{r}
+
+# ==============================================================================
+# PLOT 1: EVOLUTION OF PUBLICATIONS PER YEAR
+# ==============================================================================
+# This chart will help us see if interest in this field has grown over time.
+
+grafico_anios <- datos %>%
+  # Remove rows with no publication year
+  filter(!is.na(`Publication Year`)) %>% 
+  # Count how many publications there are for each year
+  count(`Publication Year`) %>% 
+  
+  # Create the plot
+  ggplot(aes(x = `Publication Year`, y = n)) +
+  geom_col(fill = "#4C72B0", alpha = 0.8) +
+  geom_text(aes(label = n), vjust = -0.5, size = 3) + # Add the number on top of the bar
+  theme_minimal() +
+  labs(
+    title = "Evolution of Publications per Year",
+    subtitle = "Literature trend on invertebrates, pain, and welfare",
+    x = "Publication Year",
+    y = "Number of Publications"
+  )
+
+# Show the plot
+print(grafico_anios)
+```
+
+
+### Evolution of the Field (Article Types) {data-width=300}
+
+```{r}
+datos %>%
+  filter(!is.na(Topics), !is.na(`Publication Year`)) %>%
+  select(`Publication Year`, Topics) %>%
+  separate_rows(Topics, sep = ",") %>%
+  mutate(Topics = str_trim(Topics)) %>%
+  filter(str_detect(Topics, "Article Type")) %>%
+  mutate(Topics = str_remove(Topics, "Article Type - ")) %>%
+  mutate(Topics = fct_lump(Topics, n = 5)) %>% 
+  filter(Topics != "Other") %>%
+  count(`Publication Year`, Topics) %>%
+  ggplot(aes(x = `Publication Year`, y = n, fill = Topics)) +
+  geom_col(position = "stack") +
+  scale_fill_viridis(discrete = TRUE, option = "plasma") + 
+  theme_minimal() +
+  labs(x = "Year", y = "Articles", fill = "") +
+  theme(legend.position = "bottom")
+```
+
+
+Row {data-height=500}
+-----------------------------------------------------------------------
+
+### Evolution of the Top 5 Topics over time {data-width=300}
+```{r}
+# ==============================================================================
+# PLOT 4: EVOLUTION OF THE TOP 5 TOPICS OVER TIME
+# ==============================================================================
+
+# First, we identify the Top 5 topics (excluding "Article Type" categories)
+top_temas <- datos %>%
+  filter(!is.na(Topics)) %>%
+  separate_rows(Topics, sep = ",") %>%
+  mutate(Topics = str_trim(Topics)) %>%
+  # Exclude tags that are just article types to focus on real subjects
+  filter(!str_detect(Topics, "Article Type")) %>%
+  count(Topics, sort = TRUE) %>%
+  slice_max(order_by = n, n = 6) %>%
+  filter (Topics != "Invertebrate")%>% # Estou asumindo que todos sao de invertebrados..
+  pull(Topics)
+
+# Now we plot how these 5 topics evolved over the years
+grafico_evolucion_temas <- datos %>%
+  filter(!is.na(`Publication Year`), !is.na(Topics)) %>%
+  separate_rows(Topics, sep = ",") %>%
+  mutate(Topics = str_trim(Topics)) %>%
+  filter(Topics %in% top_temas) %>% # Filter only the top 5
+  count(`Publication Year`, Topics) %>%
+  
+  ggplot(aes(x = `Publication Year`, y = n, color = Topics, group = Topics)) +
+  geom_line(size = 1.2) +
+  geom_point(size = 3) +
+  theme_minimal() +
+  scale_color_brewer(palette = "Set1") + # Use a distinct color palette
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(face = "bold", size = 14)
+  ) +
+  labs(
+    title = "Evolution of Top 5 Research Topics Over Time",
+    subtitle = "Tracking the growth of specific subjects (e.g., Welfare, Sentience, Farming)",
+    x = "Publication Year",
+    y = "Number of Publications",
+    color = "Topic"
+  )
+
+# Show the plot
+print(grafico_evolucion_temas)
+```
+
+### Most prolific authors {data-width=300}
+
+
+```{r}
+# ==============================================================================
+# PLOT 3 (Optional): MOST PROLIFIC AUTHORS
+# ==============================================================================
+# Authors are separated by semicolons (;)
+
+grafico_autores <- datos %>%
+  filter(!is.na(Authors)) %>%
+  separate_rows(Authors, sep = ";") %>%
+  mutate(Authors = str_trim(Authors)) %>%
+  count(Authors, sort = TRUE) %>%
+  slice_max(order_by = n, n = 15) %>% # Top 10 authors
+  
+  ggplot(aes(x = reorder(Authors, n), y = n)) +
+  geom_col(fill = "#C44E52", alpha = 0.8) +
+  coord_flip() +
+  theme_minimal() +
+  labs(
+    title = "Top 15 Most Prolific Authors",
+    x = "Author",
+    y = "Number of Articles"
+  )
+
+# Show the plot
+print(grafico_autores)
+
+```
+
+
+Row {data-height=500}
+-----------------------------------------------------------------------
+### Interactive Researcher Co-authorship Network  {data-width=500}
+
+```{r}
+# 1. Clean and separate the authors
+autores_df <- datos %>%
+  select(ID_Articulo, Authors) %>%
+  filter(!is.na(Authors)) %>%
+  separate_rows(Authors, sep = ";") %>% 
+  mutate(Authors = str_trim(Authors))   
+
+# Calculate total articles per author for the hover tooltip
+conteo_total_autores <- autores_df %>% count(Authors)
+
+# 2. Filter authors (As requested, keeping all authors by commenting out the filter)
+autores_frecuentes <- conteo_total_autores %>%
+  # filter(n >= 2) %>%
+  pull(Authors)
+
+# 3. Create EDGES
+edges_autores <- autores_df %>%
+  filter(Authors %in% autores_frecuentes) %>%
+  inner_join(autores_df %>% filter(Authors %in% autores_frecuentes), 
+             by = "ID_Articulo", relationship = "many-to-many") %>%
+  filter(Authors.x < Authors.y) %>% 
+  count(Authors.x, Authors.y, name = "value") %>%
+  rename(from = Authors.x, to = Authors.y) %>%
+  mutate(title = paste0("<p><b>Collaborations:</b> ", value, "</p>"))
+
+# 4. Create NODES
+nombres_unicos_autores <- unique(c(edges_autores$from, edges_autores$to))
+
+nodes_autores <- tibble(id = nombres_unicos_autores, label = nombres_unicos_autores) %>%
+  left_join(conteo_total_autores, by = c("id" = "Authors")) %>%
+  mutate(
+    title = paste0("<p><b>Author:</b> ", id, "<br><b>Total articles:</b> ", n, "</p>"),
+    color = ifelse(id %in% c("Fischer, Bob", "Barrett, Meghan"), "#FFD700", "tomato"),
+    size = ifelse(id %in% c("Fischer, Bob", "Barrett, Meghan"), 35, 20),
+    font.size = ifelse(id %in% c("Fischer, Bob", "Barrett, Meghan"), 20, 14)
+  )
+
+# 5. Plot the Network
+visNetwork(nodes_autores, edges_autores) %>%
+  visIgraphLayout(layout = "layout_with_fr") %>%
+  visEdges(color = list(color = "darkgray", highlight = "black"), smooth = FALSE) %>%
+  visNodes(font = list(color = "black", strokeWidth = 2, strokeColor = "white")) %>%
+  visOptions(
+    highlightNearest = list(enabled = TRUE, degree = 1, hover = TRUE), 
+    nodesIdSelection = TRUE 
+  ) %>%
+  visInteraction(dragNodes = TRUE, dragView = TRUE, zoomView = TRUE, hover = TRUE)
+```
+
+### Topic Co-occurrence Network (Interactive) {data-width=500}
 
 ```{r}
 # 1. Prepare Data for the Network
@@ -68,56 +329,4 @@ visNetwork(nodes_temas, edges_temas) %>%
   visOptions(highlightNearest = list(enabled = TRUE, degree = 1, hover = TRUE),
              nodesIdSelection = TRUE) %>%
   visInteraction(dragNodes = TRUE, dragView = TRUE, zoomView = TRUE, hover = TRUE)
-```
-
-Column {data-width=400}
------------------------------------------------------------------------
-
-### Evolution of the Field (Article Types)
-
-```{r}
-datos %>%
-  filter(!is.na(Topics), !is.na(`Publication Year`)) %>%
-  select(`Publication Year`, Topics) %>%
-  separate_rows(Topics, sep = ",") %>%
-  mutate(Topics = str_trim(Topics)) %>%
-  filter(str_detect(Topics, "Article Type")) %>%
-  mutate(Topics = str_remove(Topics, "Article Type - ")) %>%
-  mutate(Topics = fct_lump(Topics, n = 5)) %>% 
-  filter(Topics != "Other") %>%
-  count(`Publication Year`, Topics) %>%
-  ggplot(aes(x = `Publication Year`, y = n, fill = Topics)) +
-  geom_col(position = "stack") +
-  scale_fill_viridis(discrete = TRUE, option = "plasma") + 
-  theme_minimal() +
-  labs(x = "Year", y = "Articles", fill = "") +
-  theme(legend.position = "bottom")
-```
-
-### Word Cloud of Article Titles
-
-```{r}
-data("stop_words")
-
-datos %>%
-  filter(!is.na(Title)) %>%
-  unnest_tokens(word, Title) %>%
-  anti_join(stop_words, by = "word") %>%
-  filter(!word %in% c("evaluation", "effects", "effect", "study", "studies"),
-         !str_detect(word, "^[0-9]+$")) %>% 
-  mutate(word = case_when(
-    word %in% c("animal", "animals") ~ "animals",
-    word %in% c("insect", "insects") ~ "insects",
-    word %in% c("invertebrate", "invertebrates") ~ "invertebrates",
-    word %in% c("anesthesia", "anesthetics", "anesthetic", 
-                "anaesthesia", "anaesthetics", "anaesthetic") ~ "anesthesia",
-    TRUE ~ word 
-  )) %>%
-  count(word, sort = TRUE) %>%
-  slice_max(order_by = n, n = 50) %>%
-  ggplot(aes(label = word, size = n, color = n)) +
-  geom_text_wordcloud_area(shape = "circle") +
-  scale_size_area(max_size = 15) + 
-  scale_color_gradient(low = "#4C72B0", high = "#C44E52") + 
-  theme_minimal()
 ```
