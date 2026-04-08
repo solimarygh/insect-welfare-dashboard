@@ -16,6 +16,14 @@ library(igraph)
 library(tidytext)
 library(ggwordcloud)
 library(viridis)
+library(plotly) # <--- NUEVA LIBRERÍA PARA EL MAPA
+
+# Load data
+datos2 <- read_csv("Gallery_Library.csv") %>%
+  mutate(ID_Articulo = row_number())
+
+# Cargar datos de miembros (ajusta el nombre del archivo si es diferente)
+Members <- read_csv("Members.csv")
 
 # Load data
 datos <- read_csv("Gallery_Library.csv") %>%
@@ -290,7 +298,7 @@ visNetwork(nodes_autores, edges_autores) %>%
 
 ```{r}
 # 1. Prepare Data for the Network
-temas_df <- datos %>%
+temas_df <- datos2 %>%
   select(ID_Articulo, Topics) %>%
   filter(!is.na(Topics)) %>%
   separate_rows(Topics, sep = ",") %>%
@@ -329,4 +337,56 @@ visNetwork(nodes_temas, edges_temas) %>%
   visOptions(highlightNearest = list(enabled = TRUE, degree = 1, hover = TRUE),
              nodesIdSelection = TRUE) %>%
   visInteraction(dragNodes = TRUE, dragView = TRUE, zoomView = TRUE, hover = TRUE)
+```
+
+
+Row {data-height=600}
+-----------------------------------------------------------------------
+
+### Global Community Map
+
+```{r}
+# 1. Preparar los datos para el mapa
+datos_mapa <- Members %>%
+  # Limpiar espacios en blanco por si acaso
+  mutate(Country = str_trim(Country)) %>%
+  group_by(Country) %>%
+  summarise(
+    Total = n(),
+    # Unimos el nombre y apellido, tomando solo los primeros 15 (para no desbordar la pantalla si hay muchos)
+    Lista_Nombres = paste(head(paste(`First Name`, `Last Name`), 15), collapse = "<br>")
+  ) %>%
+  mutate(
+    # Si hay más de 15 personas, agregamos la etiqueta "... y X más"
+    Lista_Nombres = ifelse(Total > 15, 
+                           paste0(Lista_Nombres, "<br><i>...and ", Total - 15, " more</i>"), 
+                           Lista_Nombres),
+    # Construimos el cuadro de texto flotante (Tooltip) con HTML
+    Texto_Hover = paste0(
+      "<b>", Country, "</b><br>",
+      "<b>Total Members:</b> ", Total, "<br>",
+      "-------------------------<br>",
+      Lista_Nombres
+    )
+  )
+
+# 2. Dibujar el mapa interactivo
+plot_geo(datos_mapa) %>%
+  add_trace(
+    z = ~Total,                      # El color dependerá del número de miembros
+    locations = ~Country,            # La columna con los nombres de los países
+    locationmode = 'country names',  # Le decimos a plotly que use nombres (no coordenadas)
+    text = ~Texto_Hover,             # El texto interactivo que construimos
+    hoverinfo = 'text',              # Mostrar solo nuestro texto
+    colorscale = 'YlGnBu',           # Escala de colores (Amarillo a Azul oscuro)
+    marker = list(line = list(color = toRGB("darkgray"), width = 0.5)) # Bordes de los países
+  ) %>%
+  colorbar(title = "N° of Members") %>%
+  layout(
+    geo = list(
+      showframe = FALSE,
+      showcoastlines = TRUE,
+      projection = list(type = 'natural earth') # Un estilo de mapa muy elegante
+    )
+  )
 ```
