@@ -4,7 +4,7 @@ output:
   flexdashboard::flex_dashboard:
     orientation: rows
     vertical_layout: scroll
-    theme: lumen
+    theme: minty  
 ---
 
 ```{r setup, include=FALSE}
@@ -286,7 +286,9 @@ nodes_autores <- tibble(id = nombres_unicos_autores, label = nombres_unicos_auto
 visNetwork(nodes_autores, edges_autores) %>%
   visIgraphLayout(layout = "layout_with_fr") %>%
   visEdges(color = list(color = "darkgray", highlight = "black"), smooth = FALSE) %>%
-  visNodes(font = list(color = "black", strokeWidth = 2, strokeColor = "white")) %>%
+  visNodes(font = list(color = "black", strokeWidth = 2, strokeColor = "white"),
+           shadow = list(enabled = TRUE, size = 10)  # <--- ESTO LE DA EL EFECTO 3D
+                       ) %>%
   visOptions(
     highlightNearest = list(enabled = TRUE, degree = 1, hover = TRUE), 
     nodesIdSelection = TRUE 
@@ -332,7 +334,9 @@ visNetwork(nodes_temas, edges_temas) %>%
   visEdges(color = list(color = "lightgray", highlight = "black")) %>%
   visNodes(
     color = list(background = "#88CFA6", border = "#2F784D", highlight = "#FFD700"),
-    font = list(color = "black", strokeWidth = 1.5, strokeColor = "white")
+    font = list(color = "black", strokeWidth = 1.5, strokeColor = "white"),
+           shadow = list(enabled = TRUE, size = 10)  # <--- ESTO LE DA EL EFECTO 3D
+                     
   ) %>%
   visOptions(highlightNearest = list(enabled = TRUE, degree = 1, hover = TRUE),
              nodesIdSelection = TRUE) %>%
@@ -385,8 +389,16 @@ plot_geo(datos_mapa) %>%
   layout(
     geo = list(
       showframe = FALSE,
-      showcoastlines = TRUE,
-      projection = list(type = 'natural earth') # Un estilo de mapa muy elegante
-    )
+      showcoastlines = FALSE,
+      showland = TRUE,
+      landcolor = toRGB("#E5E5E5"),       # Continentes en gris claro y elegante
+      showocean = TRUE,
+      oceancolor = toRGB("#F0F8FF"),      # Océano en un tono 'Alice Blue' súper sutil
+      projection = list(type = 'natural earth') 
+    ),
+    # Quitamos el fondo del gráfico para que se funda con la página
+    paper_bgcolor = 'rgba(0,0,0,0)',
+    plot_bgcolor = 'rgba(0,0,0,0)'
+  )
   )
 ```
