@@ -657,6 +657,14 @@ plot_ly(df_design,
 ```
 
 
+Row {data-height=38}
+-----------------------------------------------------------------------
+
+<div style="padding:6px 16px; font-size:11.5px; color:#888; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px; align-items:center;">
+  <span>📚 Data source: <a href="https://www.insectwelfare.com/research-library" target="_blank" style="color:#2D6A4F; text-decoration:none; font-weight:600;">IWRS Research Library</a> — Insect Welfare Research Society</span>
+  <span>💻 Dashboard: <strong style="color:#2D3748;">Solimary García-Hernández</strong> · <a href="mailto:solimarygarcia@gmail.com" style="color:#2D6A4F; text-decoration:none;">solimarygarcia@gmail.com</a> · <em style="color:#aaa;">Built with AI assistance (Claude Code · Anthropic)</em></span>
+</div>
+
 Community {data-icon="fa-globe"}
 =====================================
 
@@ -828,6 +836,14 @@ plot_ly(df_rank,
   )
 ```
 
+
+Row {data-height=38}
+-----------------------------------------------------------------------
+
+<div style="padding:6px 16px; font-size:11.5px; color:#888; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px; align-items:center;">
+  <span>📚 Data source: <a href="https://www.insectwelfare.com/research-library" target="_blank" style="color:#2D6A4F; text-decoration:none; font-weight:600;">IWRS Research Library</a> — Insect Welfare Research Society</span>
+  <span>💻 Dashboard: <strong style="color:#2D3748;">Solimary García-Hernández</strong> · <a href="mailto:solimarygarcia@gmail.com" style="color:#2D6A4F; text-decoration:none;">solimarygarcia@gmail.com</a> · <em style="color:#aaa;">Built with AI assistance (Claude Code · Anthropic)</em></span>
+</div>
 
 Fairer Fields {data-icon="fa-search"}
 =====================================
@@ -1132,6 +1148,14 @@ htmltools::HTML('
 ```
 
 
+Row {data-height=38}
+-----------------------------------------------------------------------
+
+<div style="padding:6px 16px; font-size:11.5px; color:#888; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px; align-items:center;">
+  <span>📚 Data source: <a href="https://www.insectwelfare.com/research-library" target="_blank" style="color:#2D6A4F; text-decoration:none; font-weight:600;">IWRS Research Library</a> — Insect Welfare Research Society</span>
+  <span>💻 Dashboard: <strong style="color:#2D3748;">Solimary García-Hernández</strong> · <a href="mailto:solimarygarcia@gmail.com" style="color:#2D6A4F; text-decoration:none;">solimarygarcia@gmail.com</a> · <em style="color:#aaa;">Built with AI assistance (Claude Code · Anthropic)</em></span>
+</div>
+
 Cost-Effectiveness {data-icon="fa-calculator"}
 =====================================
 
@@ -1149,10 +1173,39 @@ Row {data-height=780}
       <div style="font-size:15px; font-weight:700; margin-bottom:2px;">🌾 Welfare Cost-Effectiveness Simulator</div>
       <div style="font-size:11.5px; opacity:0.85;">How many insect death-experiences are prevented per dollar spent compensating farmers to switch to a more humane pesticide?</div>
     </div>
-    <div style="background:rgba(255,255,255,0.15); border-radius:6px; padding:6px 14px; font-size:14px; font-family:monospace; letter-spacing:1px; white-space:nowrap;">
-      R = p · n · f · (1−s) / c
-    </div>
   </div>
+
+  <!-- Explainer accordion -->
+  <details style="margin-bottom:14px; border:1px solid #b7e4c7; border-radius:8px; overflow:hidden;">
+    <summary style="cursor:pointer; background:#f0f7f2; padding:10px 16px; font-size:13px; font-weight:700; color:#1B4332; list-style:none; display:flex; align-items:center; gap:8px; user-select:none;">
+      <span style="font-size:10px;">▶</span> 💡 What is this? &amp; How it works
+    </summary>
+    <div style="padding:14px 18px; font-size:12.5px; color:#2D3748; line-height:1.75; background:white;">
+
+      <p style="margin:0 0 10px 0;"><strong>What is this?</strong><br>
+      This interactive simulator estimates the cost-effectiveness of paying farmers to switch from a conventional pesticide to a more humane alternative — one that kills insects faster, reducing the total duration of suffering.</p>
+
+      <p style="margin:0 0 8px 0;"><strong>How it works</strong><br>
+      The model computes <strong>R</strong>, the expected number of insect death-experiences prevented per dollar spent on farmer compensation. R is driven by five parameters you control:</p>
+
+      <ul style="margin:0 0 10px 0; padding-left:20px; line-height:1.9;">
+        <li><strong>p</strong> — how likely you think insects can feel pain</li>
+        <li><strong>n</strong> — how many insects live on a hectare of cropland</li>
+        <li><strong>f</strong> — what fraction of those insects are killed by pesticide application</li>
+        <li><strong>s</strong> — how much less painful the humane pesticide is relative to the current one</li>
+        <li><strong>c</strong> — the extra cost per hectare of using the humane pesticide</li>
+      </ul>
+
+      <p style="margin:0 0 10px 0;">Adjust the sliders to reflect your own assumptions. The histogram shows the full range of plausible outcomes from 10,000 Monte Carlo simulations using the uncertainty ranges from the original model — your point estimate appears as a red line so you can see where your assumptions land relative to that distribution.</p>
+
+      <p style="margin:0 0 10px 0;">The <strong>"What does this mean in practice?"</strong> section translates the result into plain farmer-scale numbers: how many insects are spared on a farm of your chosen size, what the subsidy would cost per season, and how much it costs to prevent 1,000 insects from unnecessary suffering.</p>
+
+      <p style="margin:0; background:#f0f7f2; border-left:3px solid #2D6A4F; padding:8px 12px; border-radius:0 6px 6px 0;">
+        <strong>Why does it matter?</strong> Even under conservative assumptions, the cost per unit of suffering prevented is remarkably low — suggesting that farmer subsidy programs targeting pesticide humaneness could be among the most cost-effective interventions in insect welfare.
+      </p>
+
+    </div>
+  </details>
 
   <!-- Main two-column layout -->
   <div style="display:grid; grid-template-columns:300px 1fr; gap:14px; align-items:start;">
@@ -1224,38 +1277,10 @@ Row {data-height=780}
         <div style="display:flex; justify-content:space-between; font-size:10px; color:#aaa; margin-top:1px;"><span>$1</span><span>$300</span></div>
       </div>
 
-      <!-- Factory-farm converter -->
-      <div style="background:#fffbeb; border:1px solid #fcd34d; border-radius:8px; padding:11px; margin-top:4px;">
-        <div style="font-size:11.5px; font-weight:600; color:#92400e; margin-bottom:2px;">🐔 Suffering comparator</div>
-        <div style="font-size:11px; color:#78350f; margin-bottom:5px; line-height:1.4;">Sets the moral weight of one insect pesticide death relative to a day of factory-farm suffering. Used only to convert R into a more intuitive cost-per-year-of-suffering figure.</div>
-        <div style="font-size:11.5px; color:#78350f; margin-bottom:6px;">1 insect pesticide death = <strong><span id="lbl-ff">2.0</span> factory-farm days</strong></div>
-        <input type="range" id="sl-ff" min="0.1" max="30" step="0.1" value="2"
-               style="width:100%; accent-color:#d97706;" oninput="wSim()">
-        <div style="display:flex; justify-content:space-between; font-size:10px; color:#aaa; margin-top:1px;"><span>0.1 days</span><span>30 days</span></div>
-      </div>
     </div>
 
     <!-- ── RIGHT: results ── -->
     <div>
-
-      <!-- Stat cards -->
-      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:13px;">
-        <div style="background:white; border:1px solid #e2e8f0; border-radius:8px; padding:12px; text-align:center;">
-          <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:#888; margin-bottom:5px;">Expected R (point est.)</div>
-          <div id="st-R" style="font-size:22px; font-weight:800; color:#2D6A4F; line-height:1.1;">—</div>
-          <div style="font-size:10px; color:#bbb; margin-top:3px;">death-exp. prevented / $</div>
-        </div>
-        <div style="background:white; border:1px solid #e2e8f0; border-radius:8px; padding:12px; text-align:center;">
-          <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:#888; margin-bottom:5px;">Cost per year of suffering</div>
-          <div id="st-cost" style="font-size:22px; font-weight:800; color:#F4A261; line-height:1.1;">—</div>
-          <div style="font-size:10px; color:#bbb; margin-top:3px;">factory-farm year equivalent</div>
-        </div>
-        <div style="background:white; border:1px solid #e2e8f0; border-radius:8px; padding:12px; text-align:center;">
-          <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:#888; margin-bottom:5px;">Suffering reduction</div>
-          <div id="st-sr" style="font-size:22px; font-weight:800; color:#C44E52; line-height:1.1;">—</div>
-          <div style="font-size:10px; color:#bbb; margin-top:3px;">vs. current pesticide</div>
-        </div>
-      </div>
 
       <!-- Live formula -->
       <div style="background:#f0f7f2; border:1px solid #b7e4c7; border-radius:8px; padding:9px 14px; margin-bottom:13px; font-size:13px; color:#1B4332; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
@@ -1282,11 +1307,11 @@ Row {data-height=780}
 
       <!-- Histogram panel -->
       <div style="background:white; border:1px solid #e2e8f0; border-radius:10px; padding:14px;">
-        <div style="font-size:12px; font-weight:600; color:#2D3748; margin-bottom:2px;">
-          R distribution — 10,000 Monte Carlo draws (log<sub>10</sub> scale)
+        <div style="font-size:14px; font-weight:700; color:#1B4332; margin-bottom:4px;">
+          Given the uncertainty in these parameters, results can vary enormously — where do your assumptions land?
         </div>
         <div style="font-size:11px; color:#999; margin-bottom:8px;">
-          Bars = MC distribution using paper's default priors &nbsp;|&nbsp;
+          R distribution · 50,000 Monte Carlo draws · log<sub>10</sub> scale &nbsp;|&nbsp;
           <span style="color:#C44E52; font-weight:600;">Red line</span> = your point estimate &nbsp;|&nbsp;
           <span style="color:#F4A261; font-weight:600;">Orange dashed</span> = MC mean
         </div>
@@ -1297,16 +1322,46 @@ Row {data-height=780}
       <div style="margin-top:12px; background:#f0f7f2; border:1px solid #b7e4c7; border-radius:8px; padding:12px 16px; font-size:12px; color:#2D3748; line-height:1.7;">
         <div style="font-weight:700; color:#1B4332; margin-bottom:6px;">📖 How to read this chart</div>
         <p style="margin:0 0 6px 0;">The x-axis shows <strong>R</strong> — the expected number of insect death-experiences prevented per dollar — on a <strong>logarithmic scale</strong> (powers of 10). Because the inputs are uncertain and span many orders of magnitude, the result can range from tens to hundreds of millions; a log scale makes the full distribution visible at once.</p>
-        <p style="margin:0 0 6px 0;">The <strong>green bars</strong> are a Monte Carlo distribution: 10,000 simulations drawn randomly from the uncertainty ranges described in the original model (Brian Tomasik). Each bar shows how often R fell in that range — a tall bar means that outcome is more probable under those priors. Bars to the <em>left</em> of your red line are shaded lighter to help you see where your estimate sits relative to the distribution.</p>
+        <p style="margin:0 0 6px 0;">The <strong>green bars</strong> are a Monte Carlo distribution: 50,000 simulations drawn randomly from the uncertainty ranges described in the original model (Brian Tomasik). Each bar shows how often R fell in that range — a tall bar means that outcome is more probable under those priors. Bars to the <em>left</em> of your red line are shaded lighter to help you see where your estimate sits relative to the distribution.</p>
         <p style="margin:0 0 6px 0;">The <span style="color:#C44E52; font-weight:700;">red vertical line</span> is <strong>your point estimate</strong> — the single value of R computed directly from your slider settings. If it falls near the center of the distribution, your assumptions are typical. If it falls in the tail, your assumptions are more optimistic or pessimistic than the model average.</p>
-        <p style="margin:0;">The <span style="color:#F4A261; font-weight:700;">orange dashed line</span> is the <strong>Monte Carlo mean</strong> — the average R across all 10,000 simulations using the original priors. Compare it to your red line to see how your assumptions differ from the model defaults.</p>
+        <p style="margin:0 0 6px 0;">The <span style="color:#F4A261; font-weight:700;">orange dashed line</span> is the <strong>Monte Carlo mean</strong> — the average R across all 50,000 simulations using the original priors. Compare it to your red line to see how your assumptions differ from the model defaults.</p>
+        <p style="margin:0; background:#fffbeb; border-left:3px solid #F4A261; padding:8px 12px; border-radius:0 6px 6px 0; font-size:11.5px;">
+          <strong>If your red line is to the right of the orange:</strong> your assumptions are more optimistic than the model average — you believe the intervention prevents more suffering per dollar (e.g., you assigned a higher probability that insects feel pain, or assumed a larger insect population).<br>
+          <strong>If your red line is to the left of the orange:</strong> your assumptions are more conservative — you expect fewer insects to benefit, or the cost premium is too high to make the intervention efficient under your values.
+        </p>
       </div>
 
-      <!-- Notes -->
-      <div style="margin-top:10px; background:#f8f9fa; border-radius:8px; padding:10px 14px; font-size:11px; color:#666; line-height:1.6;">
-        <strong>⚠️ Model ignores:</strong> fixed research costs · administrative overhead · farmer outreach · compliance monitoring.
-        MC priors: ln(<em>p</em>) ~ U[−6, −0.5] · ln(<em>n</em>) ~ N(15, 2) · <em>f</em> ~ N(0.8, 0.05) · <em>s</em> ~ U[0.3, 0.9] · <em>c</em> ~ U[$1, $8].
-        Adapted from Brian Tomasik, <em>Essays on Reducing Suffering</em>.
+      <!-- Stat cards (below histogram) -->
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:12px;">
+        <div style="background:white; border:1px solid #e2e8f0; border-radius:8px; padding:12px; text-align:center;">
+          <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:#888; margin-bottom:5px;">Expected R (point est.)</div>
+          <div id="st-R" style="font-size:22px; font-weight:800; color:#2D6A4F; line-height:1.1;">—</div>
+          <div style="font-size:10px; color:#bbb; margin-top:3px;">death-exp. prevented / $</div>
+        </div>
+        <div style="background:white; border:1px solid #e2e8f0; border-radius:8px; padding:12px; text-align:center;">
+          <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:#888; margin-bottom:5px;">Suffering reduction</div>
+          <div id="st-sr" style="font-size:22px; font-weight:800; color:#C44E52; line-height:1.1;">—</div>
+          <div style="font-size:10px; color:#bbb; margin-top:3px;">vs. current pesticide</div>
+        </div>
+      </div>
+
+      <!-- Attribution + Notes -->
+      <div style="margin-top:12px; background:#f8f9fa; border:1px solid #e2e8f0; border-radius:8px; padding:11px 14px; font-size:11.5px; color:#555; line-height:1.7;">
+        <div style="margin-bottom:5px;">
+          📄 <strong>Based on:</strong>
+          <a href="https://reducing-suffering.org/humane-insecticides/" target="_blank"
+             style="color:#2D6A4F; font-weight:600; text-decoration:none;">
+            Humane Insecticides
+          </a>
+          — Brian Tomasik, <em>Essays on Reducing Suffering</em>. Last updated: November 12, 2018.
+        </div>
+        <div>
+          💻 <strong>Dashboard implementation:</strong> Solimary García-Hernández, for the <em>Fairer Fields</em> initiative · <a href="mailto:solimarygarcia@gmail.com" style="color:#2D6A4F; text-decoration:none;">solimarygarcia@gmail.com</a>
+        </div>
+        <div style="font-size:11px; color:#888;">
+          <strong>⚠️ Model ignores:</strong> fixed research costs · administrative overhead · farmer outreach · compliance monitoring.
+          MC priors: ln(<em>p</em>) ~ U[−6, −0.5] · ln(<em>n</em>) ~ N(15, 2) · <em>f</em> ~ N(0.8, 0.05) · <em>s</em> ~ U[0.3, 0.9] · <em>c</em> ~ U[$1, $8].
+        </div>
       </div>
 
     </div>
@@ -1336,7 +1391,7 @@ Row {data-height=780}
   }
 
   // ── Pre-generate MC samples (run once) ──
-  var N=10000;
+  var N=50000;
   var sp=[],sn=[],sf=[],ss=[],sc=[];
   for(var i=0;i<N;i++){
     sp.push(Math.exp(-6+Math.random()*5.5));
@@ -1417,7 +1472,6 @@ Row {data-height=780}
     var f  = parseFloat(document.getElementById('sl-f').value);
     var s  = parseFloat(document.getElementById('sl-s').value);
     var c  = parseFloat(document.getElementById('sl-c').value);
-    var ff = parseFloat(document.getElementById('sl-ff').value);
 
     // Update labels
     document.getElementById('lbl-p').textContent = p.toFixed(3);
@@ -1425,30 +1479,23 @@ Row {data-height=780}
     document.getElementById('lbl-f').textContent = f.toFixed(2);
     document.getElementById('lbl-s').innerHTML   = s.toFixed(2)+' <span style="font-weight:400;color:#888;">('+Math.round((1-s)*100)+'% reduction)</span>';
     document.getElementById('lbl-c').textContent = '$'+c.toFixed(1);
-    document.getElementById('lbl-ff').textContent= ff.toFixed(1);
 
     // R point estimate
     var R = p*n*f*(1-s)/c;
 
-    // Cost per factory-farm year:
-    // R death-exp/$ ; 1 death-exp = ff days ; 1 year = 365 days
-    // years_per_dollar = R * ff / 365 → cost_per_year = 1 / (R*ff/365)
-    var cost_per_yr = 365/(R*ff);
-
     // Update stat cards
-    document.getElementById('st-R').textContent    = fmt(R);
-    document.getElementById('st-cost').textContent = '$'+fmt(cost_per_yr);
-    document.getElementById('st-sr').textContent   = Math.round((1-s)*100)+'%';
+    document.getElementById('st-R').textContent  = fmt(R);
+    document.getElementById('st-sr').textContent = Math.round((1-s)*100)+'%';
     document.getElementById('formula-live').textContent = fmt(R);
 
     // ── Farmer plain-language translation ──
     var farmEl = document.getElementById('sl-farm');
     var farm_ha = farmEl ? Math.max(1, parseFloat(farmEl.value)||50) : 50;
-    var insects_helped  = p * n * f * (1 - s) * farm_ha;
-    var subsidy_total   = c * farm_ha;
-    var cost_per_1000   = 1000 / R;
-    var reduction_pct   = Math.round((1-s)*100);
-    var insects_per_ha  = Math.round(p * n * f * (1-s));
+    var insects_helped = p * n * f * (1 - s) * farm_ha;
+    var subsidy_total  = c * farm_ha;
+    var cost_per_1000  = 1000 / R;
+    var reduction_pct  = Math.round((1-s)*100);
+    var insects_per_ha = Math.round(p * n * f * (1-s));
 
     function fmtI(x){
       if(x>=1e9)  return (x/1e9).toFixed(1)+' billion';
@@ -1489,7 +1536,6 @@ Row {data-height=780}
     document.getElementById('sl-f').value  = 0.8;
     document.getElementById('sl-s').value  = 0.5;
     document.getElementById('sl-c').value  = 4.5;
-    document.getElementById('sl-ff').value = 2.0;
     wSim();
   }
 
