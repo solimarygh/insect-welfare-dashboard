@@ -1,14 +1,73 @@
 ---
-title: "Society of Insect Welfare - Literature Dashboard"
-output: 
+title: "Insect Welfare"
+output:
   flexdashboard::flex_dashboard:
     orientation: rows
     vertical_layout: scroll
-    theme: minty  
+    theme: flatly
 ---
 
+```{css, echo=FALSE}
+/* ── Navbar ─────────────────────────────────────────────── */
+.navbar {
+  background-color: #1B4332 !important;
+  border-color: #1B4332 !important;
+}
+.navbar-brand {
+  color: white !important;
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: 0.4px;
+}
+.navbar-nav > li > a {
+  color: rgba(255,255,255,0.85) !important;
+  font-weight: 500;
+}
+.navbar-nav > li > a:hover,
+.navbar-nav > li.active > a {
+  color: white !important;
+  background-color: rgba(255,255,255,0.12) !important;
+}
+
+/* ── Section headers ─────────────────────────────────────── */
+.chart-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2D3748;
+  letter-spacing: 0.2px;
+}
+
+/* ── Value boxes ─────────────────────────────────────────── */
+.value-box .value {
+  font-size: 28px;
+  font-weight: 700;
+}
+.value-box .caption {
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ── General layout ─────────────────────────────────────── */
+body {
+  font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
+  background-color: #F7F9F7;
+}
+.chart-wrapper {
+  border-radius: 6px;
+}
+
+/* ── Allow AI summary cards to expand freely ─────────────── */
+.chart-stage {
+  overflow-y: auto !important;
+}
+details.ai-expand[open] ~ details.ai-expand {
+  margin-top: 8px;
+}
+```
+
 ```{r setup, include=FALSE}
-# Load all necessary packages
 library(flexdashboard)
 library(tidyverse)
 library(visNetwork)
@@ -16,63 +75,152 @@ library(igraph)
 library(tidytext)
 library(ggwordcloud)
 library(viridis)
-library(plotly) # <--- NUEVA LIBRERÍA PARA EL MAPA
+library(plotly)
+library(RColorBrewer)
+library(DT)
 
-# Load data
-datos2 <- read_csv("Gallery_Library.csv") %>%
-  mutate(ID_Articulo = row_number())
-
-# Cargar datos de miembros (ajusta el nombre del archivo si es diferente)
-Members <- read_csv("Members.csv")
-
-# Load data
+# ── Load data ──────────────────────────────────────────────
 datos <- read_csv("Gallery_Library.csv") %>%
   mutate(ID_Articulo = row_number())
+
+Members <- read_csv("Members.csv")
+
+# ── Colour palette ─────────────────────────────────────────
+col_primary   <- "#2D6A4F"   # dark green (general)
+col_highlight <- "#F4A261"   # warm orange (spotlight areas)
+col_accent    <- "#C44E52"   # red (authors)
+col_light     <- "#74C69D"   # light green (community)
+
+# ── Helper: count articles matching a topic regex ──────────
+count_topic <- function(pattern) {
+  datos %>%
+    filter(!is.na(Topics)) %>%
+    separate_rows(Topics, sep = ",") %>%
+    mutate(Topics = str_trim(Topics)) %>%
+    filter(str_detect(Topics, regex(pattern, ignore_case = TRUE))) %>%
+    pull(ID_Articulo) %>%
+    n_distinct()
+}
+
+# ── Summary stats ──────────────────────────────────────────
+n_total        <- nrow(datos)
+n_authors      <- datos %>%
+  filter(!is.na(Authors)) %>%
+  separate_rows(Authors, sep = ";") %>%
+  mutate(Authors = str_trim(Authors)) %>%
+  pull(Authors) %>% n_distinct()
+
+year_range <- datos %>%
+  filter(!is.na(`Publication Year`)) %>%
+  summarise(r = paste(min(`Publication Year`), max(`Publication Year`), sep = "–")) %>%
+  pull(r)
+
+n_insecticides <- count_topic("insecticide|pesticide")
+n_anesthetics  <- count_topic("anesthes|anaesthes")
+n_agriculture  <- count_topic("farming|agriculture|food")
+
+# ── Spotlight regex (reused across plots) ──────────────────
+spotlight_regex <- "insecticide|pesticide|anesthes|anaesthes|farming|agriculture|food|general anesthesia|killing method"
 ```
 
 
-Row {data-height=500}
+Literature {data-icon="fa-book"}
+=====================================
+
+Row {data-height=120}
 -----------------------------------------------------------------------
 
-### Top 15 Most frequent topics {data-width=600}
+### Total Articles
 
 ```{r}
-# ==============================================================================
-# PLOT 2: TOP 15 MOST FREQUENT TOPICS
-# ==============================================================================
-# Since the "Topics" column contains several topics separated by commas, 
-# we need to separate them to count them individually.
+valueBox(n_total, icon = "fa-book", color = col_primary,
+         caption = "Articles in Library")
+```
 
-grafico_temas <- datos %>%
-  # Remove rows without topics
-  filter(!is.na(Topics)) %>% 
-  # Separate the Topics column into multiple rows (using the comma as separator)
-  separate_rows(Topics, sep = ",") %>% 
-  # Remove extra whitespaces at the beginning and end
-  mutate(Topics = str_trim(Topics)) %>% 
-  # Count the frequency of each topic and sort from highest to lowest
-  count(Topics, sort = TRUE) %>% 
-  # Take only the top 15 topics
-  slice_max(order_by = n, n = 15) %>% 
-  
-  # Create the plot
-  ggplot(aes(x = reorder(Topics, n), y = n)) +
-  geom_col(fill = "#55A868", alpha = 0.8) +
-  coord_flip() + # Flip the bars so the texts are easier to read
-  theme_minimal() +
-  labs(
-    title = "Top 15 Most Frequent Topics in the Literature",
-    x = "Category / Topic",
-    y = "Number of Articles"
-  )
+### Unique Authors
 
-# Show the plot
-print(grafico_temas)
+```{r}
+valueBox(n_authors, icon = "fa-users", color = col_primary,
+         caption = "Unique Authors")
+```
 
+### Years Covered
+
+```{r}
+valueBox(year_range, icon = "fa-calendar", color = "#457B9D",
+         caption = "Publication Range")
+```
+
+### Insecticides & Pesticides
+
+```{r}
+valueBox(paste0(n_insecticides, " articles"), icon = "fa-flask",
+         color = col_highlight, caption = "Insecticides & Pesticides")
+```
+
+### Insect Anesthetics
+
+```{r}
+valueBox(paste0(n_anesthetics, " articles"), icon = "fa-medkit",
+         color = col_highlight, caption = "Insect Anesthetics")
+```
+
+### Farming & Agriculture
+
+```{r}
+valueBox(paste0(n_agriculture, " articles"), icon = "fa-leaf",
+         color = col_highlight, caption = "Farming & Agriculture")
 ```
 
 
-### Word Cloud of Article Titles Row {data-height=300}
+Row {data-height=460}
+-----------------------------------------------------------------------
+
+### Top 15 Most Frequent Topics {data-width=600}
+
+```{r}
+df_temas <- datos %>%
+  filter(!is.na(Topics)) %>%
+  separate_rows(Topics, sep = ",") %>%
+  mutate(Topics = str_trim(Topics)) %>%
+  filter(!str_detect(Topics, "Article Type")) %>%
+  count(Topics, sort = TRUE) %>%
+  slice_max(order_by = n, n = 15) %>%
+  arrange(n) %>%
+  mutate(
+    Topics = factor(Topics, levels = Topics),
+    Group  = if_else(
+      str_detect(as.character(Topics), regex(spotlight_regex, ignore_case = TRUE)),
+      "Key Research Area", "Other"
+    )
+  )
+
+plot_ly() %>%
+  add_bars(
+    data        = filter(df_temas, Group == "Other"),
+    x           = ~n, y = ~Topics, orientation = "h",
+    name        = "Other",
+    marker      = list(color = col_primary, opacity = 0.9),
+    text        = ~paste0("<b>", Topics, "</b><br>Articles: ", n),
+    hoverinfo   = "text"
+  ) %>%
+  add_bars(
+    data        = filter(df_temas, Group == "Key Research Area"),
+    x           = ~n, y = ~Topics, orientation = "h",
+    name        = "Key Research Area",
+    marker      = list(color = col_highlight, opacity = 0.9),
+    text        = ~paste0("<b>", Topics, "</b><br>Articles: ", n),
+    hoverinfo   = "text"
+  ) %>%
+  layout(
+    xaxis   = list(title = "Number of Articles"),
+    yaxis   = list(title = "", categoryorder = "total ascending"),
+    legend  = list(orientation = "h", x = 0, y = -0.15),
+    barmode = "overlay"
+  )
+```
+
+### Word Cloud of Article Titles {data-width=400}
 
 ```{r}
 data("stop_words")
@@ -81,226 +229,269 @@ datos %>%
   filter(!is.na(Title)) %>%
   unnest_tokens(word, Title) %>%
   anti_join(stop_words, by = "word") %>%
-  filter(!word %in% c("evaluation", "effects", "effect", "study", "studies"),
-         !str_detect(word, "^[0-9]+$")) %>% 
+  filter(
+    !word %in% c("evaluation", "effects", "effect", "study", "studies"),
+    !str_detect(word, "^[0-9]+$")
+  ) %>%
   mutate(word = case_when(
-    word %in% c("animal", "animals") ~ "animals",
-    word %in% c("insect", "insects") ~ "insects",
-    word %in% c("invertebrate", "invertebrates") ~ "invertebrates",
-    word %in% c("anesthesia", "anesthetics", "anesthetic", 
-                "anaesthesia", "anaesthetics", "anaesthetic") ~ "anesthesia",
-    TRUE ~ word 
+    word %in% c("animal", "animals")                            ~ "animals",
+    word %in% c("insect", "insects")                            ~ "insects",
+    word %in% c("invertebrate", "invertebrates")                ~ "invertebrates",
+    word %in% c("anesthesia", "anesthetics", "anesthetic",
+                "anaesthesia", "anaesthetics", "anaesthetic")   ~ "anesthesia",
+    TRUE ~ word
   )) %>%
   count(word, sort = TRUE) %>%
   slice_max(order_by = n, n = 50) %>%
   ggplot(aes(label = word, size = n, color = n)) +
   geom_text_wordcloud_area(shape = "circle") +
-  scale_size_area(max_size =20) + 
-  scale_color_gradient(low = "#4C72B0", high = "#C44E52") + 
+  scale_size_area(max_size = 20) +
+  scale_color_gradient(low = col_primary, high = col_highlight) +
   theme_minimal()
 ```
 
 
-Row {data-height=500}
+Row {data-height=420}
 -----------------------------------------------------------------------
-### Evolution of publicacions per year {data-width=300}
 
+### Evolution of Publications per Year {data-width=500}
 
 ```{r}
+df_years <- datos %>%
+  filter(!is.na(`Publication Year`)) %>%
+  count(`Publication Year`)
 
-# ==============================================================================
-# PLOT 1: EVOLUTION OF PUBLICATIONS PER YEAR
-# ==============================================================================
-# This chart will help us see if interest in this field has grown over time.
-
-grafico_anios <- datos %>%
-  # Remove rows with no publication year
-  filter(!is.na(`Publication Year`)) %>% 
-  # Count how many publications there are for each year
-  count(`Publication Year`) %>% 
-  
-  # Create the plot
-  ggplot(aes(x = `Publication Year`, y = n)) +
-  geom_col(fill = "#4C72B0", alpha = 0.8) +
-  geom_text(aes(label = n), vjust = -0.5, size = 3) + # Add the number on top of the bar
-  theme_minimal() +
-  labs(
-    title = "Evolution of Publications per Year",
-    subtitle = "Literature trend on invertebrates, pain, and welfare",
-    x = "Publication Year",
-    y = "Number of Publications"
+plot_ly(df_years,
+  x          = ~`Publication Year`, y = ~n,
+  type       = "bar",
+  marker     = list(color = col_primary, opacity = 0.85),
+  text       = ~paste0("Year: ", `Publication Year`, "<br>Articles: ", n),
+  hoverinfo  = "text",
+  showlegend = FALSE
+) %>%
+  layout(
+    xaxis = list(title = "Year"),
+    yaxis = list(title = "Number of Publications")
   )
-
-# Show the plot
-print(grafico_anios)
 ```
 
-
-### Evolution of the Field (Article Types) {data-width=300}
+### Article Types Over Time {data-width=500}
 
 ```{r}
-datos %>%
+df_types <- datos %>%
   filter(!is.na(Topics), !is.na(`Publication Year`)) %>%
-  select(`Publication Year`, Topics) %>%
   separate_rows(Topics, sep = ",") %>%
   mutate(Topics = str_trim(Topics)) %>%
   filter(str_detect(Topics, "Article Type")) %>%
   mutate(Topics = str_remove(Topics, "Article Type - ")) %>%
-  mutate(Topics = fct_lump(Topics, n = 5)) %>% 
+  mutate(Topics = fct_lump(Topics, n = 5)) %>%
   filter(Topics != "Other") %>%
-  count(`Publication Year`, Topics) %>%
-  ggplot(aes(x = `Publication Year`, y = n, fill = Topics)) +
-  geom_col(position = "stack") +
-  scale_fill_viridis(discrete = TRUE, option = "plasma") + 
-  theme_minimal() +
-  labs(x = "Year", y = "Articles", fill = "") +
-  theme(legend.position = "bottom")
+  count(`Publication Year`, Topics)
+
+type_levels <- levels(fct_lump(
+  datos %>% filter(!is.na(Topics)) %>%
+    separate_rows(Topics, sep = ",") %>%
+    mutate(Topics = str_trim(Topics)) %>%
+    filter(str_detect(Topics, "Article Type")) %>%
+    mutate(Topics = str_remove(Topics, "Article Type - ")) %>%
+    pull(Topics),
+  n = 5
+))
+type_levels <- setdiff(type_levels, "Other")
+pal_types   <- viridis::plasma(length(type_levels))
+
+p_types <- plot_ly()
+for (i in seq_along(type_levels)) {
+  d <- df_types %>% filter(as.character(Topics) == type_levels[i])
+  p_types <- p_types %>% add_bars(
+    data      = d,
+    x         = ~`Publication Year`, y = ~n,
+    name      = type_levels[i],
+    marker    = list(color = pal_types[i]),
+    text      = ~paste0(Topics, "<br>Year: ", `Publication Year`, "<br>Articles: ", n),
+    hoverinfo = "text"
+  )
+}
+p_types %>% layout(
+  barmode = "stack",
+  xaxis   = list(title = "Year"),
+  yaxis   = list(title = "Articles"),
+  legend  = list(orientation = "h", x = 0, y = -0.2)
+)
 ```
 
 
-Row {data-height=500}
+Row {data-height=430}
 -----------------------------------------------------------------------
 
-### Evolution of the Top 5 Topics over time {data-width=300}
-```{r}
-# ==============================================================================
-# PLOT 4: EVOLUTION OF THE TOP 5 TOPICS OVER TIME
-# ==============================================================================
+### Spotlight: Key Research Areas Over Time {data-width=500}
 
-# First, we identify the Top 5 topics (excluding "Article Type" categories)
+```{r}
+df_spotlight <- datos %>%
+  filter(!is.na(Topics), !is.na(`Publication Year`)) %>%
+  separate_rows(Topics, sep = ",") %>%
+  mutate(Topics = str_trim(Topics)) %>%
+  mutate(Area = case_when(
+    str_detect(Topics, regex("insecticide|pesticide",    ignore_case = TRUE)) ~ "Insecticides & Pesticides",
+    str_detect(Topics, regex("anesthes|anaesthes",       ignore_case = TRUE)) ~ "Insect Anesthetics",
+    str_detect(Topics, regex("farming|agriculture|food", ignore_case = TRUE)) ~ "Farming & Agriculture",
+    TRUE ~ NA_character_
+  )) %>%
+  filter(!is.na(Area)) %>%
+  distinct(ID_Articulo, `Publication Year`, Area) %>%
+  count(`Publication Year`, Area)
+
+spotlight_cols <- c(
+  "Insecticides & Pesticides" = "#E76F51",
+  "Insect Anesthetics"        = "#F4A261",
+  "Farming & Agriculture"     = col_primary
+)
+
+p_spotlight <- plot_ly()
+for (a in names(spotlight_cols)) {
+  d <- df_spotlight %>% filter(Area == a)
+  p_spotlight <- p_spotlight %>% add_trace(
+    data      = d,
+    x         = ~`Publication Year`, y = ~n,
+    type      = "scatter", mode = "lines+markers",
+    name      = a,
+    line      = list(color = spotlight_cols[a], width = 2.5),
+    marker    = list(color = spotlight_cols[a], size = 8),
+    text      = ~paste0(Area, "<br>Year: ", `Publication Year`, "<br>Articles: ", n),
+    hoverinfo = "text"
+  )
+}
+p_spotlight %>% layout(
+  xaxis  = list(title = "Year"),
+  yaxis  = list(title = "Articles"),
+  legend = list(orientation = "h", x = 0, y = -0.2)
+)
+```
+
+### Evolution of Top 5 Research Topics {data-width=500}
+
+```{r}
 top_temas <- datos %>%
   filter(!is.na(Topics)) %>%
   separate_rows(Topics, sep = ",") %>%
   mutate(Topics = str_trim(Topics)) %>%
-  # Exclude tags that are just article types to focus on real subjects
-  filter(!str_detect(Topics, "Article Type")) %>%
+  filter(!str_detect(Topics, "Article Type"), Topics != "Invertebrate") %>%
   count(Topics, sort = TRUE) %>%
-  slice_max(order_by = n, n = 6) %>%
-  filter (Topics != "Invertebrate")%>% # Estou asumindo que todos sao de invertebrados..
+  slice_max(order_by = n, n = 5) %>%
   pull(Topics)
 
-# Now we plot how these 5 topics evolved over the years
-grafico_evolucion_temas <- datos %>%
+df_top5 <- datos %>%
   filter(!is.na(`Publication Year`), !is.na(Topics)) %>%
   separate_rows(Topics, sep = ",") %>%
   mutate(Topics = str_trim(Topics)) %>%
-  filter(Topics %in% top_temas) %>% # Filter only the top 5
-  count(`Publication Year`, Topics) %>%
-  
-  ggplot(aes(x = `Publication Year`, y = n, color = Topics, group = Topics)) +
-  geom_line(size = 1.2) +
-  geom_point(size = 3) +
-  theme_minimal() +
-  scale_color_brewer(palette = "Set1") + # Use a distinct color palette
-  theme(
-    legend.position = "bottom",
-    plot.title = element_text(face = "bold", size = 14)
-  ) +
-  labs(
-    title = "Evolution of Top 5 Research Topics Over Time",
-    subtitle = "Tracking the growth of specific subjects (e.g., Welfare, Sentience, Farming)",
-    x = "Publication Year",
-    y = "Number of Publications",
-    color = "Topic"
-  )
+  filter(Topics %in% top_temas) %>%
+  count(`Publication Year`, Topics)
 
-# Show the plot
-print(grafico_evolucion_temas)
+top5_cols <- RColorBrewer::brewer.pal(min(length(top_temas), 8), "Set1")[seq_along(top_temas)]
+names(top5_cols) <- top_temas
+
+p_top5 <- plot_ly()
+for (i in seq_along(top_temas)) {
+  d <- df_top5 %>% filter(Topics == top_temas[i])
+  p_top5 <- p_top5 %>% add_trace(
+    data      = d,
+    x         = ~`Publication Year`, y = ~n,
+    type      = "scatter", mode = "lines+markers",
+    name      = top_temas[i],
+    line      = list(color = top5_cols[i], width = 2),
+    marker    = list(color = top5_cols[i], size = 7),
+    text      = ~paste0(Topics, "<br>Year: ", `Publication Year`, "<br>Articles: ", n),
+    hoverinfo = "text"
+  )
+}
+p_top5 %>% layout(
+  xaxis  = list(title = "Year"),
+  yaxis  = list(title = "Articles"),
+  legend = list(orientation = "h", x = 0, y = -0.2)
+)
 ```
 
-### Most prolific authors {data-width=300}
 
+Row {data-height=420}
+-----------------------------------------------------------------------
+
+### Most Prolific Authors
 
 ```{r}
-# ==============================================================================
-# PLOT 3 (Optional): MOST PROLIFIC AUTHORS
-# ==============================================================================
-# Authors are separated by semicolons (;)
-
-grafico_autores <- datos %>%
+df_authors <- datos %>%
   filter(!is.na(Authors)) %>%
   separate_rows(Authors, sep = ";") %>%
   mutate(Authors = str_trim(Authors)) %>%
   count(Authors, sort = TRUE) %>%
-  slice_max(order_by = n, n = 15) %>% # Top 10 authors
-  
-  ggplot(aes(x = reorder(Authors, n), y = n)) +
-  geom_col(fill = "#C44E52", alpha = 0.8) +
-  coord_flip() +
-  theme_minimal() +
-  labs(
-    title = "Top 15 Most Prolific Authors",
-    x = "Author",
-    y = "Number of Articles"
+  slice_max(order_by = n, n = 15) %>%
+  arrange(n) %>%
+  mutate(Authors = factor(Authors, levels = Authors))
+
+plot_ly(df_authors,
+  x           = ~n, y = ~Authors, orientation = "h",
+  type        = "bar",
+  marker      = list(color = col_accent, opacity = 0.85),
+  text        = ~paste0(Authors, "<br>Articles: ", n),
+  hoverinfo   = "text",
+  showlegend  = FALSE
+) %>%
+  layout(
+    xaxis = list(title = "Number of Articles"),
+    yaxis = list(title = "")
   )
-
-# Show the plot
-print(grafico_autores)
-
 ```
 
 
-Row {data-height=500}
+Row {data-height=540}
 -----------------------------------------------------------------------
-### Interactive Researcher Co-authorship Network  {data-width=500}
+
+### Researcher Co-authorship Network {data-width=500}
 
 ```{r}
-# 1. Clean and separate the authors
 autores_df <- datos %>%
   select(ID_Articulo, Authors) %>%
   filter(!is.na(Authors)) %>%
-  separate_rows(Authors, sep = ";") %>% 
-  mutate(Authors = str_trim(Authors))   
+  separate_rows(Authors, sep = ";") %>%
+  mutate(Authors = str_trim(Authors))
 
-# Calculate total articles per author for the hover tooltip
 conteo_total_autores <- autores_df %>% count(Authors)
 
-# 2. Filter authors (As requested, keeping all authors by commenting out the filter)
-autores_frecuentes <- conteo_total_autores %>%
-  # filter(n >= 2) %>%
-  pull(Authors)
-
-# 3. Create EDGES
 edges_autores <- autores_df %>%
-  filter(Authors %in% autores_frecuentes) %>%
-  inner_join(autores_df %>% filter(Authors %in% autores_frecuentes), 
-             by = "ID_Articulo", relationship = "many-to-many") %>%
-  filter(Authors.x < Authors.y) %>% 
+  inner_join(autores_df, by = "ID_Articulo", relationship = "many-to-many") %>%
+  filter(Authors.x < Authors.y) %>%
   count(Authors.x, Authors.y, name = "value") %>%
   rename(from = Authors.x, to = Authors.y) %>%
   mutate(title = paste0("<p><b>Collaborations:</b> ", value, "</p>"))
 
-# 4. Create NODES
 nombres_unicos_autores <- unique(c(edges_autores$from, edges_autores$to))
 
 nodes_autores <- tibble(id = nombres_unicos_autores, label = nombres_unicos_autores) %>%
   left_join(conteo_total_autores, by = c("id" = "Authors")) %>%
   mutate(
-    title = paste0("<p><b>Author:</b> ", id, "<br><b>Total articles:</b> ", n, "</p>"),
-    color = ifelse(id %in% c("Fischer, Bob", "Barrett, Meghan"), "#FFD700", "tomato"),
-    size = ifelse(id %in% c("Fischer, Bob", "Barrett, Meghan"), 35, 20),
-    font.size = ifelse(id %in% c("Fischer, Bob", "Barrett, Meghan"), 20, 14)
+    title     = paste0("<p><b>Author:</b> ", id, "<br><b>Total articles:</b> ", n, "</p>"),
+    color     = if_else(id %in% c("Fischer, Bob", "Barrett, Meghan"), "#FFD700", col_primary),
+    size      = if_else(id %in% c("Fischer, Bob", "Barrett, Meghan"), 35, 20),
+    font.size = if_else(id %in% c("Fischer, Bob", "Barrett, Meghan"), 20, 14)
   )
 
-# 5. Plot the Network
 visNetwork(nodes_autores, edges_autores) %>%
   visIgraphLayout(layout = "layout_with_fr") %>%
   visEdges(color = list(color = "darkgray", highlight = "black"), smooth = FALSE) %>%
-  visNodes(font = list(color = "black", strokeWidth = 2, strokeColor = "white"),
-           shadow = list(enabled = TRUE, size = 10)  # <--- ESTO LE DA EL EFECTO 3D
-                       ) %>%
+  visNodes(
+    font   = list(color = "black", strokeWidth = 2, strokeColor = "white"),
+    shadow = list(enabled = TRUE, size = 10)
+  ) %>%
   visOptions(
-    highlightNearest = list(enabled = TRUE, degree = 1, hover = TRUE), 
-    nodesIdSelection = TRUE 
+    highlightNearest = list(enabled = TRUE, degree = 1, hover = TRUE),
+    nodesIdSelection = TRUE
   ) %>%
   visInteraction(dragNodes = TRUE, dragView = TRUE, zoomView = TRUE, hover = TRUE)
 ```
 
-### Topic Co-occurrence Network (Interactive) {data-width=500}
+### Topic Co-occurrence Network {data-width=500}
 
 ```{r}
-# 1. Prepare Data for the Network
-temas_df <- datos2 %>%
+temas_df <- datos %>%
   select(ID_Articulo, Topics) %>%
   filter(!is.na(Topics)) %>%
   separate_rows(Topics, sep = ",") %>%
@@ -311,94 +502,1004 @@ temas_frecuentes <- temas_df %>% count(Topics) %>% filter(n >= 3) %>% pull(Topic
 
 edges_temas <- temas_df %>%
   filter(Topics %in% temas_frecuentes) %>%
-  inner_join(temas_df %>% filter(Topics %in% temas_frecuentes), 
-             by = "ID_Articulo", relationship = "many-to-many") %>%
+  inner_join(
+    temas_df %>% filter(Topics %in% temas_frecuentes),
+    by = "ID_Articulo", relationship = "many-to-many"
+  ) %>%
   filter(Topics.x < Topics.y) %>%
   count(Topics.x, Topics.y, name = "value") %>%
   rename(from = Topics.x, to = Topics.y) %>%
   mutate(title = paste0("<p><b>Appeared together:</b> ", value, " times</p>"))
 
-conteo_temas <- temas_df %>% count(Topics)
+conteo_temas  <- temas_df %>% count(Topics)
 nombres_temas <- unique(c(edges_temas$from, edges_temas$to))
 
 nodes_temas <- tibble(id = nombres_temas, label = nombres_temas) %>%
   left_join(conteo_temas, by = c("id" = "Topics")) %>%
   mutate(
     title = paste0("<p><b>Topic:</b> ", id, "<br><b>Total articles:</b> ", n, "</p>"),
-    value = n
+    value = n,
+    color = if_else(
+      str_detect(id, regex(spotlight_regex, ignore_case = TRUE)),
+      col_highlight, col_primary
+    )
   )
 
-# 2. Plot the Network
 visNetwork(nodes_temas, edges_temas) %>%
   visIgraphLayout(layout = "layout_with_fr") %>%
   visEdges(color = list(color = "lightgray", highlight = "black")) %>%
   visNodes(
-    color = list(background = "#88CFA6", border = "#2F784D", highlight = "#FFD700"),
-    font = list(color = "black", strokeWidth = 1.5, strokeColor = "white"),
-           shadow = list(enabled = TRUE, size = 10)  # <--- ESTO LE DA EL EFECTO 3D
-                     
+    font   = list(color = "black", strokeWidth = 1.5, strokeColor = "white"),
+    shadow = list(enabled = TRUE, size = 10)
   ) %>%
-  visOptions(highlightNearest = list(enabled = TRUE, degree = 1, hover = TRUE),
-             nodesIdSelection = TRUE) %>%
+  visOptions(
+    highlightNearest = list(enabled = TRUE, degree = 1, hover = TRUE),
+    nodesIdSelection = TRUE
+  ) %>%
   visInteraction(dragNodes = TRUE, dragView = TRUE, zoomView = TRUE, hover = TRUE)
 ```
 
 
-Row {data-height=600}
+Row {data-height=50}
 -----------------------------------------------------------------------
 
-### Global Community Map
+<div style="padding:8px 16px; background:#1B4332; color:white; font-size:13px; font-weight:600; border-radius:6px; letter-spacing:0.3px;">
+  📍 Research Landscape — Where is the field concentrating, and where are the gaps?
+</div>
+
+Row {data-height=440}
+-----------------------------------------------------------------------
+
+### Welfare Criteria Coverage {data-width=550}
 
 ```{r}
-# 1. Preparar los datos para el mapa
+# Welfare-specific terms that map to the presentation's key criteria
+welfare_terms <- tibble(
+  term    = c("Sentience", "Pain", "Nociception", "Consciousness",
+              "Cognition", "Affective", "Stress", "Emotion",
+              "Welfare", "Moral Status", "Learning", "Memory"),
+  label   = c("Sentience", "Pain", "Nociception", "Consciousness",
+              "Cognition", "Affective States", "Stress / Physiological",
+              "Emotion", "Welfare (general)", "Moral Status",
+              "Learning", "Memory")
+)
+
+df_welfare <- welfare_terms %>%
+  mutate(
+    n = map_int(term, function(t) {
+      sum(str_detect(datos$Topics, regex(t, ignore_case = TRUE)), na.rm = TRUE)
+    }),
+    Gap = if_else(n <= 5, "Under-researched", "Established"),
+    label = factor(label, levels = label[order(n)])
+  ) %>%
+  arrange(n) %>%
+  mutate(label = factor(label, levels = label))
+
+plot_ly(df_welfare,
+  x           = ~n,
+  y           = ~label,
+  orientation = "h",
+  type        = "bar",
+  color       = ~Gap,
+  colors      = c("Under-researched" = col_accent, "Established" = col_primary),
+  opacity     = 0.88,
+  text        = ~paste0(label, "<br>Articles: ", n, "<br><b>", Gap, "</b>"),
+  hoverinfo   = "text"
+) %>%
+  layout(
+    xaxis     = list(title = "Number of Articles"),
+    yaxis     = list(title = ""),
+    legend    = list(title = list(text = "<b>Coverage</b>"), orientation = "h",
+                     x = 0.3, y = -0.15),
+    barmode   = "overlay",
+    shapes    = list(list(
+      type    = "line", x0 = 5, x1 = 5, y0 = -0.5, y1 = nrow(df_welfare) - 0.5,
+      line    = list(color = col_accent, width = 1.5, dash = "dot")
+    )),
+    annotations = list(list(
+      x = 5.5, y = nrow(df_welfare) - 0.8, text = "gap threshold",
+      showarrow = FALSE, font = list(size = 10, color = col_accent), xanchor = "left"
+    ))
+  )
+```
+
+### Study Design Balance {data-width=450}
+
+```{r}
+# Extract article types and map to meaningful design categories
+df_design <- datos %>%
+  filter(!is.na(Topics)) %>%
+  separate_rows(Topics, sep = ",") %>%
+  mutate(Topics = str_trim(Topics)) %>%
+  filter(str_detect(Topics, "Article Type")) %>%
+  mutate(Design = str_remove(Topics, "Article Type\\s*-\\s*") %>% str_trim()) %>%
+  count(Design, sort = TRUE) %>%
+  mutate(
+    Category = case_when(
+      str_detect(Design, regex("empirical|experimental|field|lab", ignore_case = TRUE)) ~ "Empirical",
+      str_detect(Design, regex("review|meta|systematic", ignore_case = TRUE))           ~ "Review / Meta-analysis",
+      str_detect(Design, regex("book|chapter|opinion|comment|editorial", ignore_case = TRUE)) ~ "Book / Opinion",
+      TRUE ~ "Theoretical / Other"
+    )
+  ) %>%
+  group_by(Category) %>%
+  summarise(n = sum(n), .groups = "drop") %>%
+  arrange(desc(n))
+
+category_colors <- c(
+  "Empirical"             = col_primary,
+  "Review / Meta-analysis"= col_highlight,
+  "Book / Opinion"        = "#A8DADC",
+  "Theoretical / Other"   = "#E0E0E0"
+)
+
+plot_ly(df_design,
+  labels  = ~Category,
+  values  = ~n,
+  type    = "pie",
+  hole    = 0.52,
+  marker  = list(
+    colors = category_colors[df_design$Category],
+    line   = list(color = "white", width = 2)
+  ),
+  textinfo      = "label+percent",
+  hovertemplate = "<b>%{label}</b><br>Articles: %{value}<br>%{percent}<extra></extra>",
+  showlegend    = TRUE
+) %>%
+  layout(
+    legend      = list(orientation = "h", x = 0.1, y = -0.1),
+    annotations = list(list(
+      text      = paste0("<b>", sum(df_design$n), "</b><br>articles"),
+      x = 0.5, y = 0.5, showarrow = FALSE,
+      font      = list(size = 14, color = "#1B4332")
+    ))
+  )
+```
+
+
+Community {data-icon="fa-globe"}
+=====================================
+
+Row {data-height=120}
+-----------------------------------------------------------------------
+
+### Total Members
+
+```{r}
+valueBox(nrow(Members), icon = "fa-users", color = col_primary,
+         caption = "Registered Members")
+```
+
+### Countries Represented
+
+```{r}
+valueBox(
+  Members %>% mutate(Country = str_trim(Country)) %>% pull(Country) %>% n_distinct(na.rm = TRUE),
+  icon    = "fa-globe",
+  color   = "#457B9D",
+  caption = "Countries"
+)
+```
+
+### Disciplines
+
+```{r}
+valueBox(
+  Members %>% filter(!is.na(`General Discipline`), `General Discipline` != "") %>%
+    pull(`General Discipline`) %>% n_distinct(),
+  icon    = "fa-university",
+  color   = col_light,
+  caption = "Research Disciplines"
+)
+```
+
+
+Row {data-height=560}
+-----------------------------------------------------------------------
+
+### Global Member Map
+
+```{r}
 datos_mapa <- Members %>%
-  # Limpiar espacios en blanco por si acaso
   mutate(Country = str_trim(Country)) %>%
   group_by(Country) %>%
   summarise(
-    Total = n(),
-    # Unimos el nombre y apellido, tomando solo los primeros 15 (para no desbordar la pantalla si hay muchos)
-    Lista_Nombres = paste(head(paste(`First Name`, `Last Name`), 15), collapse = "<br>")
+    Total         = n(),
+    Lista_Nombres = paste(head(paste(`First Name`, `Last Name`), 15), collapse = "<br>"),
+    .groups       = "drop"
   ) %>%
   mutate(
-    # Si hay más de 15 personas, agregamos la etiqueta "... y X más"
-    Lista_Nombres = ifelse(Total > 15, 
-                           paste0(Lista_Nombres, "<br><i>...and ", Total - 15, " more</i>"), 
-                           Lista_Nombres),
-    # Construimos el cuadro de texto flotante (Tooltip) con HTML
+    Lista_Nombres = if_else(
+      Total > 15,
+      paste0(Lista_Nombres, "<br><i>...and ", Total - 15, " more</i>"),
+      Lista_Nombres
+    ),
     Texto_Hover = paste0(
       "<b>", Country, "</b><br>",
-      "<b>Total Members:</b> ", Total, "<br>",
-      "-------------------------<br>",
+      "<b>Members:</b> ", Total, "<br>",
+      "─────────────────<br>",
       Lista_Nombres
     )
   )
 
-# 2. Dibujar el mapa interactivo
 plot_geo(datos_mapa) %>%
   add_trace(
-    z = ~Total,                      # El color dependerá del número de miembros
-    locations = ~Country,            # La columna con los nombres de los países
-    locationmode = 'country names',  # Le decimos a plotly que use nombres (no coordenadas)
-    text = ~Texto_Hover,             # El texto interactivo que construimos
-    hoverinfo = 'text',              # Mostrar solo nuestro texto
-    colorscale = 'YlGnBu',           # Escala de colores (Amarillo a Azul oscuro)
-    marker = list(line = list(color = toRGB("darkgray"), width = 0.5)) # Bordes de los países
+    z            = ~Total,
+    locations    = ~Country,
+    locationmode = "country names",
+    text         = ~Texto_Hover,
+    hoverinfo    = "text",
+    colorscale   = list(
+      c(0,   "#D8F3DC"),
+      c(0.4, "#52B788"),
+      c(1,   "#1B4332")
+    ),
+    marker = list(line = list(color = toRGB("white"), width = 0.5))
   ) %>%
-  colorbar(title = "N° of Members") %>%
+  colorbar(title = "Members") %>%
   layout(
     geo = list(
-      showframe = FALSE,
+      showframe      = FALSE,
       showcoastlines = FALSE,
-      showland = TRUE,
-      landcolor = toRGB("#E5E5E5"),       # Continentes en gris claro y elegante
-      showocean = TRUE,
-      oceancolor = toRGB("#F0F8FF"),      # Océano en un tono 'Alice Blue' súper sutil
-      projection = list(type = 'natural earth') 
+      showland       = TRUE,
+      landcolor      = toRGB("#E8F4EA"),
+      showocean      = TRUE,
+      oceancolor     = toRGB("#EBF5FB"),
+      projection     = list(type = "natural earth")
     ),
-    # Quitamos el fondo del gráfico para que se funda con la página
-    paper_bgcolor = 'rgba(0,0,0,0)',
-    plot_bgcolor = 'rgba(0,0,0,0)'
+    paper_bgcolor = "rgba(0,0,0,0)",
+    plot_bgcolor  = "rgba(0,0,0,0)"
   )
+```
+
+
+Row {data-height=420}
+-----------------------------------------------------------------------
+
+### Members by Country (Top 20) {data-width=400}
+
+```{r}
+df_country <- Members %>%
+  mutate(Country = str_trim(Country)) %>%
+  count(Country, sort = TRUE) %>%
+  slice_max(order_by = n, n = 20) %>%
+  arrange(n) %>%
+  mutate(Country = factor(Country, levels = Country))
+
+plot_ly(df_country,
+  x           = ~n, y = ~Country, orientation = "h",
+  type        = "bar",
+  marker      = list(color = col_primary, opacity = 0.85),
+  text        = ~paste0(Country, ": ", n, " members"),
+  hoverinfo   = "text",
+  showlegend  = FALSE
+) %>%
+  layout(
+    xaxis = list(title = "Members"),
+    yaxis = list(title = "")
   )
+```
+
+### Members by Discipline {data-width=400}
+
+```{r}
+df_disc <- Members %>%
+  filter(!is.na(`General Discipline`), `General Discipline` != "") %>%
+  mutate(Discipline = str_trim(`General Discipline`)) %>%
+  mutate(Discipline = fct_lump(Discipline, n = 10)) %>%
+  count(Discipline, sort = TRUE) %>%
+  arrange(n) %>%
+  mutate(Discipline = factor(Discipline, levels = Discipline))
+
+plot_ly(df_disc,
+  x           = ~n, y = ~Discipline, orientation = "h",
+  type        = "bar",
+  marker      = list(color = col_light, opacity = 0.85),
+  text        = ~paste0(Discipline, ": ", n, " members"),
+  hoverinfo   = "text",
+  showlegend  = FALSE
+) %>%
+  layout(
+    xaxis = list(title = "Members"),
+    yaxis = list(title = "")
+  )
+```
+
+### Members by Rank {data-width=300}
+
+```{r}
+df_rank <- Members %>%
+  filter(!is.na(Rank), Rank != "") %>%
+  count(Rank, sort = TRUE) %>%
+  arrange(n) %>%
+  mutate(Rank = factor(Rank, levels = Rank))
+
+plot_ly(df_rank,
+  x           = ~n, y = ~Rank, orientation = "h",
+  type        = "bar",
+  marker      = list(color = "#52B788", opacity = 0.85),
+  text        = ~paste0(Rank, ": ", n, " members"),
+  hoverinfo   = "text",
+  showlegend  = FALSE
+) %>%
+  layout(
+    xaxis = list(title = "Members"),
+    yaxis = list(title = "")
+  )
+```
+
+
+Fairer Fields {data-icon="fa-search"}
+=====================================
+
+```{r fairer-fields-data, include=FALSE}
+# Articles matching key research areas
+df_fairer <- datos %>%
+  filter(!is.na(Topics)) %>%
+  filter(str_detect(Topics, regex(spotlight_regex, ignore_case = TRUE))) %>%
+  mutate(
+    # Clickable DOI link
+    DOI_link = if_else(
+      !is.na(DOI) & DOI != "",
+      paste0('<a href="', DOI, '" target="_blank">🔗 Open</a>'),
+      "—"
+    ),
+    # Clean up Topics: remove "Article Type - " prefix for readability
+    Topics_clean = str_replace_all(Topics, "Article Type - ", "") %>%
+                   str_replace_all(",", " · "),
+    # Tag which spotlight areas match
+    Areas = case_when(
+      str_detect(Topics, regex("insecticide|pesticide", ignore_case = TRUE)) &
+        str_detect(Topics, regex("anesthes|anaesthes|general anesthesia|killing method", ignore_case = TRUE)) ~ "Insecticides · Anesthetics",
+      str_detect(Topics, regex("insecticide|pesticide", ignore_case = TRUE)) ~ "Insecticides & Pesticides",
+      str_detect(Topics, regex("anesthes|anaesthes|general anesthesia|killing method", ignore_case = TRUE)) ~ "Anesthetics / Killing Methods",
+      str_detect(Topics, regex("farming|agriculture|food", ignore_case = TRUE)) ~ "Farming & Agriculture",
+      TRUE ~ "Other"
+    )
+  ) %>%
+  select(
+    Title,
+    Authors,
+    Year      = `Publication Year`,
+    Areas,
+    Topics    = Topics_clean,
+    DOI       = DOI_link
+  )
+
+# Demo article: first article with a non-empty Summary for the AI card
+demo_article <- datos %>%
+  filter(!is.na(Summary), Summary != "",
+         str_detect(Topics, regex(spotlight_regex, ignore_case = TRUE))) %>%
+  slice(1)
+
+# If no article has a summary, fall back to any spotlight article
+if (nrow(demo_article) == 0) {
+  demo_article <- datos %>%
+    filter(str_detect(Topics, regex(spotlight_regex, ignore_case = TRUE))) %>%
+    slice(1)
+}
+```
+
+Row {data-height=60}
+-----------------------------------------------------------------------
+
+<div style="padding: 10px 15px; background:#f0f7f2; border-left: 4px solid #2D6A4F; border-radius:4px; font-size:14px; color:#2D3748;">
+  <b>Fairer Fields</b> — Articles from the library related to insecticides & pesticides, insect anesthetics, killing methods, and farming & agriculture. Use the search box and column filters to explore. <span style="color:#888;">Future feature: click any row to get an AI-generated summary.</span>
+</div>
+
+Row {data-height=500}
+-----------------------------------------------------------------------
+
+### Literature on Key Research Areas
+
+```{r}
+datatable(
+  df_fairer,
+  escape      = FALSE,          # render DOI as HTML link
+  rownames    = FALSE,
+  filter      = "top",          # per-column filters
+  extensions  = "Buttons",
+  options     = list(
+    pageLength  = 15,
+    dom         = "Bfrtip",
+    buttons     = list(
+      list(extend = "csv",   text = "Download CSV"),
+      list(extend = "excel", text = "Download Excel")
+    ),
+    columnDefs  = list(
+      list(width = "35%",  targets = 0),   # Title
+      list(width = "20%",  targets = 1),   # Authors
+      list(width = "5%",   targets = 2),   # Year
+      list(width = "15%",  targets = 3),   # Areas
+      list(width = "20%",  targets = 4),   # Topics
+      list(width = "5%",   targets = 5)    # DOI
+    ),
+    scrollX     = TRUE
+  ),
+  class = "stripe hover compact"
+) %>%
+  formatStyle(
+    "Areas",
+    backgroundColor = styleEqual(
+      c("Insecticides & Pesticides", "Anesthetics / Killing Methods",
+        "Insecticides · Anesthetics", "Farming & Agriculture"),
+      c("#fff3e0", "#e8f4fd", "#fce4d6", "#e8f5e9")
+    ),
+    fontWeight = "bold"
+  )
+```
+
+
+Row {data-height=30}
+-----------------------------------------------------------------------
+
+<div style="padding:6px 15px; font-size:13px; color:#888; font-style:italic;">
+  ✨ <b>AI Summary Preview</b> — demonstration of a future feature. In the full version, each article will have an automatically generated structured summary.
+</div>
+
+Row
+-----------------------------------------------------------------------
+
+### AI-Generated Summary (Demo)
+
+```{r}
+htmltools::HTML('
+<style>
+  details.ai-expand { margin-top:8px; }
+  details.ai-expand summary {
+    cursor:pointer; font-size:12px; font-weight:600; color:#2D6A4F;
+    padding:7px 10px; background:#f0f7f2; border-radius:6px;
+    list-style:none; display:flex; align-items:center; gap:6px;
+    user-select:none;
+  }
+  details.ai-expand summary::-webkit-details-marker { display:none; }
+  details.ai-expand summary::before { content:"▶"; font-size:9px; transition:transform 0.2s; }
+  details.ai-expand[open] summary::before { content:"▶"; transform:rotate(90deg); display:inline-block; }
+  details.ai-expand .detail-body {
+    padding:10px 12px; font-size:12.5px; color:#2D3748; line-height:1.65;
+    border-left:3px solid #74C69D; margin-top:6px; background:#fafafa; border-radius:0 6px 6px 0;
+  }
+  details.ai-expand .detail-body ul { margin:4px 0; padding-left:18px; }
+  details.ai-expand .detail-body li { margin-bottom:4px; }
+  details.ai-expand[data-type="results"] summary { color:#3730a3; background:#f0f4ff; }
+  details.ai-expand[data-type="results"] .detail-body { border-left-color:#a5b4fc; }
+  details.ai-expand[data-type="questions"] summary { color:#92400e; background:#fffbeb; }
+  details.ai-expand[data-type="questions"] .detail-body { border-left-color:#fcd34d; }
+</style>
+
+<div style="font-family: Segoe UI, Helvetica, Arial, sans-serif; font-size:13.5px; line-height:1.6; display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+
+  <!-- ═══ Card 1: Lapied et al. ═══ -->
+  <div style="background:white; border:1px solid #e2e8f0; border-radius:10px; padding:16px 18px; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+    <div style="margin-bottom:10px;">
+      <span style="background:#2D6A4F; color:white; border-radius:4px; padding:2px 8px; font-size:10.5px; font-weight:600; letter-spacing:0.5px;">AI SUMMARY · DEMO</span>
+      <span style="margin-left:8px; background:#e8f5e9; color:#2D6A4F; border-radius:4px; padding:2px 7px; font-size:10.5px; font-weight:600;">Insecticides</span>
+    </div>
+    <div style="font-size:14px; font-weight:700; color:#1B4332; margin-bottom:2px; line-height:1.4;">Indoxacarb, an oxadiazine insecticide, blocks insect neuronal sodium channels</div>
+    <div style="color:#888; font-size:12px; margin-bottom:12px;">Lapied et al. &middot; <em>British Journal of Pharmacology</em> &middot; 2001</div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:4px;">
+      <div style="background:#f0f7f2; border-radius:7px; padding:10px;">
+        <div style="font-weight:700; color:#2D6A4F; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:5px;">🔬 Hypothesis</div>
+        <div style="color:#2D3748; font-size:12.5px;">DCJW (active metabolite of indoxacarb) selectively blocks voltage-dependent Na⁺ channels in insect neurons via a binding site shared with local anesthetics, distinct from pyrethroids and TTX.</div>
+      </div>
+      <div style="background:#fff8f0; border-radius:7px; padding:10px;">
+        <div style="font-weight:700; color:#c05621; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:5px;">⚗️ Experiments</div>
+        <div style="color:#2D3748; font-size:12.5px;">Whole-cell patch-clamp on isolated cockroach (<em>Periplaneta americana</em>) DUM neurons; IC50 dose-response curves; co-application with TTX and lidocaine; Ca²⁺/K⁺ selectivity tests.</div>
+      </div>
+      <div style="background:#f0f4ff; border-radius:7px; padding:10px;">
+        <div style="font-weight:700; color:#3730a3; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:5px;">📊 Results</div>
+        <div style="color:#2D3748; font-size:12.5px;">IC50 = 28 nM; additive with TTX; competitive with lidocaine; no effect on Ca²⁺ or K⁺; membrane hyperpolarized from −53.5 to −72.5 mV.</div>
+      </div>
+    </div>
+
+    <details class="ai-expand">
+      <summary>🔬 Want to know more about the methodology?</summary>
+      <div class="detail-body">
+        <ul>
+          <li>DUM (<em>dorsal unpaired median</em>) neurons enzymatically isolated from the terminal abdominal ganglia of <em>Periplaneta americana</em>.</li>
+          <li><strong>Whole-cell patch-clamp</strong> in a superfusion chamber (~0.1 mL volume) at room temperature.</li>
+          <li>DCJW applied via bath superfusion at concentrations ranging 1 nM to 10 µM; TTX used at 300 nM as a reference sodium channel blocker.</li>
+          <li>Lidocaine tested at 1–30 mM for competitive co-application experiments.</li>
+          <li>Ca²⁺ currents measured using Ba²⁺ as charge carrier; K⁺ currents isolated in Ca²⁺-free external solution.</li>
+          <li>Membrane potential recorded in current-clamp mode; input resistance calculated from responses to hyperpolarizing current pulses.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="ai-expand">
+      <summary>⚗️ Want to know more about the statistical analyses?</summary>
+      <div class="detail-body">
+        <ul>
+          <li>Concentration-response curves fitted with the <strong>Hill equation</strong> to derive IC50 and Hill coefficient.</li>
+          <li>Current amplitudes normalized to pre-drug control peak values.</li>
+          <li>DCJW + TTX combined inhibition analysed to test <strong>additivity vs. independence</strong> of binding sites.</li>
+          <li>DCJW + lidocaine co-application tested for <strong>competitive interaction</strong>: combined effect significantly lower than additive expectation confirms shared binding site.</li>
+          <li>Statistical comparisons by <strong>paired t-test</strong> (currents before vs. during drug application); p &lt; 0.05.</li>
+          <li>Input resistance and resting membrane potential compared before and during DCJW superfusion.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="ai-expand" data-type="results">
+      <summary>📊 Want to know more about the main results?</summary>
+      <div class="detail-body">
+        <ul>
+          <li><strong>IC50 = 28 nM</strong> for peak sodium current inhibition — 10× less potent than TTX, but ~1,000× more potent than lidocaine.</li>
+          <li>DCJW + TTX combination produced <strong>additive inhibition</strong>, confirming they act at independent, non-overlapping binding sites.</li>
+          <li>DCJW + lidocaine produced <strong>less-than-additive inhibition</strong>, confirming competitive binding at a shared site (local anesthetic receptor).</li>
+          <li>No significant effect on Ca²⁺ or K⁺ currents at tested concentrations — <strong>high selectivity for Na⁺ channels</strong>.</li>
+          <li>Resting membrane potential shifted from −53.5 mV to −72.5 mV (hyperpolarization); <strong>input resistance increased by ~41%</strong>.</li>
+          <li>First mechanistic characterisation of indoxacarb action on insect neuronal sodium channels, providing a pharmacological basis distinct from all prior insecticide classes.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="ai-expand" data-type="questions">
+      <summary>💡 Open questions &amp; future directions</summary>
+      <div class="detail-body">
+        <ul>
+          <li>Does DCJW affect other insect sodium channel subtypes (e.g., para-type variants expressed in sensory neurons)?</li>
+          <li>Is the lidocaine-shared binding site conserved across beneficial insects — particularly bees (<em>Apis mellifera</em>) and other pollinators?</li>
+          <li>What are the <strong>sublethal behavioural consequences</strong> of DCJW at environmentally relevant concentrations (below IC50)?</li>
+          <li>Could this pharmacological target be exploited to design <strong>more selective</strong> insecticides with reduced off-target effects?</li>
+          <li>How does resistance to indoxacarb evolve at the molecular level — are sodium channel mutations observed in resistant field populations?</li>
+        </ul>
+      </div>
+    </details>
+  </div>
+
+  <!-- ═══ Card 2: Guo et al. ═══ -->
+  <div style="background:white; border:1px solid #e2e8f0; border-radius:10px; padding:16px 18px; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+    <div style="margin-bottom:10px;">
+      <span style="background:#2D6A4F; color:white; border-radius:4px; padding:2px 8px; font-size:10.5px; font-weight:600; letter-spacing:0.5px;">AI SUMMARY · DEMO</span>
+      <span style="margin-left:8px; background:#fff3e0; color:#e65100; border-radius:4px; padding:2px 7px; font-size:10.5px; font-weight:600;">Anesthetics · Insecticides</span>
+    </div>
+    <div style="font-size:14px; font-weight:700; color:#1B4332; margin-bottom:2px; line-height:1.4;">Convergent evolution of <em>Rdl</em> duplications as insect counter-defense against plant neurotoxins and synthetic insecticides</div>
+    <div style="color:#888; font-size:12px; margin-bottom:12px;">Guo et al. &middot; <em>Nature Ecology &amp; Evolution</em> &middot; 2023</div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:4px;">
+      <div style="background:#f0f7f2; border-radius:7px; padding:10px;">
+        <div style="font-weight:700; color:#2D6A4F; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:5px;">🔬 Hypothesis</div>
+        <div style="color:#2D3748; font-size:12.5px;">Convergent amino acid substitutions in duplicated <em>Rdl</em> (GABA receptor gene) evolved over 300 Myr as a counter-defense against plant terpenoids — and the same changes rapidly re-emerged against synthetic insecticides.</div>
+      </div>
+      <div style="background:#fff8f0; border-radius:7px; padding:10px;">
+        <div style="font-weight:700; color:#c05621; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:5px;">⚗️ Experiments</div>
+        <div style="color:#2D3748; font-size:12.5px;">Phylogenetics (22 orders, 171 families); molecular docking; CRISPR-Cas9 in <em>Drosophila</em>; survival bioassays on picrotoxin/thymol; fitness cost assays; ancestral-state reconstruction.</div>
+      </div>
+      <div style="background:#f0f4ff; border-radius:7px; padding:10px;">
+        <div style="font-weight:700; color:#3730a3; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:5px;">📊 Results</div>
+        <div style="color:#2D3748; font-size:12.5px;">≥8 independent <em>Rdl</em> duplications; 2&prime; substitutions sterically block NCA binding; <em>Rdl</em> copy number explains 10–14% of diversification variance in Lepidoptera.</div>
+      </div>
+    </div>
+
+    <details class="ai-expand">
+      <summary>🔬 Want to know more about the methodology?</summary>
+      <div class="detail-body">
+        <ul>
+          <li>Maximum-likelihood phylogenetic reconstruction across 411 species (22 insect orders, 171 families); <em>Rdl</em> gene copy number counted per genome.</li>
+          <li>Homology models of the RDL receptor based on the <em>C. elegans</em> GluCl crystal structure; <strong>molecular docking</strong> with AutoDock Vina for picrotoxin and thymol.</li>
+          <li><strong>CRISPR-Cas9</strong> editing in <em>Drosophila melanogaster</em> (w¹¹¹⁸ background): introduced substitutions A2&#39;S, A2&#39;Q, A2&#39;N, A2&#39;P and T6&#39;I at the 2&#39; pore-lining position.</li>
+          <li>Survival bioassays: picrotoxin- and thymol-supplemented diets at increasing concentrations, tested in adults and larvae.</li>
+          <li>Fitness cost assays: egg-laying rate, heat-induced paralysis (37 °C), and locomotor performance (climbing assay) across genotypes.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="ai-expand">
+      <summary>⚗️ Want to know more about the statistical analyses?</summary>
+      <div class="detail-body">
+        <ul>
+          <li><strong>Ancestral-state reconstruction</strong> via stochastic character mapping to infer the origin of duplications and substitutions across the phylogeny.</li>
+          <li>Sister-clade <strong>diversification rate comparison</strong> (BiSSE-like approach); Pearson correlation between <em>Rdl</em> copy number and net diversification rate.</li>
+          <li>Docking scores compared between wild-type and mutant receptor models to quantify <strong>binding affinity reduction</strong> for picrotoxin/thymol.</li>
+          <li>Survival analysed with <strong>logistic regression</strong>; S/S and Q/+ genotypes compared against controls.</li>
+          <li>Fitness costs tested with <strong>Mann-Whitney U tests</strong>; Q/Q and P/P genotypes showed significantly reduced fecundity and increased heat-induced paralysis.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="ai-expand" data-type="results">
+      <summary>📊 Want to know more about the main results?</summary>
+      <div class="detail-body">
+        <ul>
+          <li>Identified <strong>≥8 independent <em>Rdl</em> gene duplication events</strong> across insect lineages, distributed across Lepidoptera, Diptera, Coleoptera, and others.</li>
+          <li>Substitutions at the <strong>2&prime; pore-lining position</strong> (A2&#39;S, A2&#39;Q) reduce pore radius, sterically blocking the binding of non-competitive antagonists (picrotoxin, thymol, fipronil).</li>
+          <li>S/S and Q/+ genotypes showed <strong>significantly increased survival</strong> on both picrotoxin and thymol diets; P/P genotype was less effective.</li>
+          <li><em>Rdl</em> copy number <strong>positively correlates with net diversification rate</strong> in Lepidoptera, explaining 10–14% of variance — suggesting a macroevolutionary advantage.</li>
+          <li><strong>Fitness trade-offs</strong>: Q/Q homozygotes showed reduced egg-laying and higher heat-induced paralysis, suggesting the duplicate copy buffers fitness costs in heterozygotes.</li>
+          <li>The same 2&prime; substitutions documented in <strong>field-collected resistant populations</strong> within one human lifetime — evolutionary parallel between deep evolutionary history and contemporary insecticide resistance.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="ai-expand" data-type="questions">
+      <summary>💡 Open questions &amp; future directions</summary>
+      <div class="detail-body">
+        <ul>
+          <li>Do <em>Rdl</em> duplications provide resistance to <strong>other GABA-targeting insecticides</strong> (e.g., dieldrin, endosulfan) beyond fipronil and picrotoxin?</li>
+          <li>Do similar convergent mechanisms occur in <strong>other receptor families</strong> (sodium channels, acetylcholinesterase) under plant-derived toxin pressure?</li>
+          <li>Can <em>Rdl</em> copy number variation be used to <strong>predict resistance evolution</strong> in uncharacterised pest species before it emerges?</li>
+          <li>How do <em>Rdl</em> duplications affect <strong>ecologically relevant interactions</strong> — e.g., competition, predator-prey dynamics in naturally terpenoid-rich environments?</li>
+          <li>What are the <strong>welfare implications</strong> for insects whose GABA receptors are structurally altered — does insecticide action cause different pain/distress responses in resistant vs. susceptible individuals?</li>
+        </ul>
+      </div>
+    </details>
+  </div>
+
+</div>
+')
+```
+
+
+Cost-Effectiveness {data-icon="fa-calculator"}
+=====================================
+
+Row {data-height=780}
+-----------------------------------------------------------------------
+
+### Paying Farmers for Humane Pesticides — Interactive Simulator
+
+```{=html}
+<div id="welfare-sim" style="font-family:'Segoe UI',Helvetica,Arial,sans-serif; padding:6px 4px; font-size:13px;">
+
+  <!-- Header banner -->
+  <div style="background:#1B4332; color:white; padding:10px 16px; border-radius:8px; margin-bottom:14px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+    <div>
+      <div style="font-size:15px; font-weight:700; margin-bottom:2px;">🌾 Welfare Cost-Effectiveness Simulator</div>
+      <div style="font-size:11.5px; opacity:0.85;">How many insect death-experiences are prevented per dollar spent compensating farmers to switch to a more humane pesticide?</div>
+    </div>
+    <div style="background:rgba(255,255,255,0.15); border-radius:6px; padding:6px 14px; font-size:14px; font-family:monospace; letter-spacing:1px; white-space:nowrap;">
+      R = p · n · f · (1−s) / c
+    </div>
+  </div>
+
+  <!-- Main two-column layout -->
+  <div style="display:grid; grid-template-columns:300px 1fr; gap:14px; align-items:start;">
+
+    <!-- ── LEFT: parameter sliders ── -->
+    <div style="background:white; border:1px solid #e2e8f0; border-radius:10px; padding:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div style="font-weight:700; font-size:11px; color:#1B4332; text-transform:uppercase; letter-spacing:0.6px;">📐 Set Your Parameters</div>
+        <button onclick="wReset()" style="font-size:11px; font-weight:600; color:#2D6A4F; background:#f0f7f2; border:1px solid #b7e4c7; border-radius:5px; padding:3px 10px; cursor:pointer;">↺ Reset defaults</button>
+      </div>
+
+      <!-- p -->
+      <div style="margin-bottom:13px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+          <span style="font-weight:600; color:#2D3748; font-size:12px;"><em>p</em> — Probability insects feel pain</span>
+          <span id="lbl-p" style="font-weight:700; color:#2D6A4F; font-size:12px;">0.100</span>
+        </div>
+        <div style="font-size:11px; color:#888; margin-bottom:4px; line-height:1.4;">Your subjective belief that insects are sentient and capable of experiencing suffering. Likely varies by species; treated here as a single value across all insects.</div>
+        <input type="range" id="sl-p" min="0.001" max="0.6" step="0.001" value="0.1"
+               style="width:100%; accent-color:#2D6A4F;" oninput="wSim()">
+        <div style="display:flex; justify-content:space-between; font-size:10px; color:#aaa; margin-top:1px;"><span>0.001 (very unlikely)</span><span>0.6 (quite likely)</span></div>
+      </div>
+
+      <!-- n -->
+      <div style="margin-bottom:13px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+          <span style="font-weight:600; color:#2D3748; font-size:12px;"><em>n</em> — Insects per hectare</span>
+          <span id="lbl-n" style="font-weight:700; color:#2D6A4F; font-size:12px;">3.3M</span>
+        </div>
+        <div style="font-size:11px; color:#888; margin-bottom:4px; line-height:1.4;">Average number of insects (and other small sentient organisms) inhabiting one hectare of cropland during the growing season. Varies widely by crop type and region.</div>
+        <input type="range" id="sl-n" min="12" max="18" step="0.05" value="15"
+               style="width:100%; accent-color:#2D6A4F;" oninput="wSim()">
+        <div style="display:flex; justify-content:space-between; font-size:10px; color:#aaa; margin-top:1px;"><span>163K</span><span>65M</span></div>
+      </div>
+
+      <!-- f -->
+      <div style="margin-bottom:13px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+          <span style="font-weight:600; color:#2D3748; font-size:12px;"><em>f</em> — Fraction killed by pesticide</span>
+          <span id="lbl-f" style="font-weight:700; color:#2D6A4F; font-size:12px;">0.80</span>
+        </div>
+        <div style="font-size:11px; color:#888; margin-bottom:4px; line-height:1.4;">Proportion of insects on a treated hectare that are killed or significantly harmed by a single pesticide application. Assumes both pesticides are equally potent.</div>
+        <input type="range" id="sl-f" min="0.05" max="1.0" step="0.01" value="0.8"
+               style="width:100%; accent-color:#2D6A4F;" oninput="wSim()">
+        <div style="display:flex; justify-content:space-between; font-size:10px; color:#aaa; margin-top:1px;"><span>0.05 (few affected)</span><span>1.0 (all killed)</span></div>
+      </div>
+
+      <!-- s -->
+      <div style="margin-bottom:13px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+          <span style="font-weight:600; color:#2D3748; font-size:12px;"><em>s</em> — Painfulness ratio (humane / harmful)</span>
+          <span id="lbl-s" style="font-weight:700; color:#2D6A4F; font-size:12px;">0.50 <span style="font-weight:400; color:#888;">(50% reduction)</span></span>
+        </div>
+        <div style="font-size:11px; color:#888; margin-bottom:4px; line-height:1.4;">How painful the humane pesticide is relative to the current one, per unit of time. E.g., s = 0.5 means the humane pesticide kills twice as fast, causing half the total suffering. Lower = greater welfare benefit.</div>
+        <input type="range" id="sl-s" min="0.05" max="0.99" step="0.01" value="0.5"
+               style="width:100%; accent-color:#2D6A4F;" oninput="wSim()">
+        <div style="display:flex; justify-content:space-between; font-size:10px; color:#aaa; margin-top:1px;"><span>0.05 (95% less painful)</span><span>0.99 (1% less painful)</span></div>
+      </div>
+
+      <!-- c -->
+      <div style="margin-bottom:14px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+          <span style="font-weight:600; color:#2D3748; font-size:12px;"><em>c</em> — Cost premium per hectare ($)</span>
+          <span id="lbl-c" style="font-weight:700; color:#2D6A4F; font-size:12px;">$4.50</span>
+        </div>
+        <div style="font-size:11px; color:#888; margin-bottom:4px; line-height:1.4;">The extra cost per hectare of using the more humane pesticide instead of the current one. This is the amount a subsidy program would need to compensate farmers per hectare treated.</div>
+        <input type="range" id="sl-c" min="1" max="300" step="1" value="4.5"
+               style="width:100%; accent-color:#2D6A4F;" oninput="wSim()">
+        <div style="display:flex; justify-content:space-between; font-size:10px; color:#aaa; margin-top:1px;"><span>$1</span><span>$300</span></div>
+      </div>
+
+      <!-- Factory-farm converter -->
+      <div style="background:#fffbeb; border:1px solid #fcd34d; border-radius:8px; padding:11px; margin-top:4px;">
+        <div style="font-size:11.5px; font-weight:600; color:#92400e; margin-bottom:2px;">🐔 Suffering comparator</div>
+        <div style="font-size:11px; color:#78350f; margin-bottom:5px; line-height:1.4;">Sets the moral weight of one insect pesticide death relative to a day of factory-farm suffering. Used only to convert R into a more intuitive cost-per-year-of-suffering figure.</div>
+        <div style="font-size:11.5px; color:#78350f; margin-bottom:6px;">1 insect pesticide death = <strong><span id="lbl-ff">2.0</span> factory-farm days</strong></div>
+        <input type="range" id="sl-ff" min="0.1" max="30" step="0.1" value="2"
+               style="width:100%; accent-color:#d97706;" oninput="wSim()">
+        <div style="display:flex; justify-content:space-between; font-size:10px; color:#aaa; margin-top:1px;"><span>0.1 days</span><span>30 days</span></div>
+      </div>
+    </div>
+
+    <!-- ── RIGHT: results ── -->
+    <div>
+
+      <!-- Stat cards -->
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:13px;">
+        <div style="background:white; border:1px solid #e2e8f0; border-radius:8px; padding:12px; text-align:center;">
+          <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:#888; margin-bottom:5px;">Expected R (point est.)</div>
+          <div id="st-R" style="font-size:22px; font-weight:800; color:#2D6A4F; line-height:1.1;">—</div>
+          <div style="font-size:10px; color:#bbb; margin-top:3px;">death-exp. prevented / $</div>
+        </div>
+        <div style="background:white; border:1px solid #e2e8f0; border-radius:8px; padding:12px; text-align:center;">
+          <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:#888; margin-bottom:5px;">Cost per year of suffering</div>
+          <div id="st-cost" style="font-size:22px; font-weight:800; color:#F4A261; line-height:1.1;">—</div>
+          <div style="font-size:10px; color:#bbb; margin-top:3px;">factory-farm year equivalent</div>
+        </div>
+        <div style="background:white; border:1px solid #e2e8f0; border-radius:8px; padding:12px; text-align:center;">
+          <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:#888; margin-bottom:5px;">Suffering reduction</div>
+          <div id="st-sr" style="font-size:22px; font-weight:800; color:#C44E52; line-height:1.1;">—</div>
+          <div style="font-size:10px; color:#bbb; margin-top:3px;">vs. current pesticide</div>
+        </div>
+      </div>
+
+      <!-- Live formula -->
+      <div style="background:#f0f7f2; border:1px solid #b7e4c7; border-radius:8px; padding:9px 14px; margin-bottom:13px; font-size:13px; color:#1B4332; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <span style="font-family:monospace;">R = p × n × f × (1−s) / c</span>
+        <span style="color:#888; font-size:12px;">=</span>
+        <span id="formula-live" style="font-weight:800; font-size:15px; color:#1B4332;">—</span>
+        <span style="font-size:11px; color:#888;">death-experiences prevented per dollar</span>
+      </div>
+
+      <!-- Farmer translation card -->
+      <div style="background:#fffdf5; border:1px solid #fde68a; border-radius:10px; padding:14px 16px; margin-bottom:13px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+          <div style="font-weight:700; font-size:12px; color:#92400e;">🌾 What does this mean in practice?</div>
+          <div style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:#78350f;">
+            <label for="sl-farm">Farm size:</label>
+            <input type="number" id="sl-farm" value="50" min="1" max="50000" step="10"
+              style="width:70px; font-size:12px; padding:2px 6px; border:1px solid #fcd34d; border-radius:4px; text-align:center;"
+              oninput="wSim()">
+            <span>hectares</span>
+          </div>
+        </div>
+        <div id="farmer-text" style="font-size:12.5px; color:#44403c; line-height:1.8;"></div>
+      </div>
+
+      <!-- Histogram panel -->
+      <div style="background:white; border:1px solid #e2e8f0; border-radius:10px; padding:14px;">
+        <div style="font-size:12px; font-weight:600; color:#2D3748; margin-bottom:2px;">
+          R distribution — 10,000 Monte Carlo draws (log<sub>10</sub> scale)
+        </div>
+        <div style="font-size:11px; color:#999; margin-bottom:8px;">
+          Bars = MC distribution using paper's default priors &nbsp;|&nbsp;
+          <span style="color:#C44E52; font-weight:600;">Red line</span> = your point estimate &nbsp;|&nbsp;
+          <span style="color:#F4A261; font-weight:600;">Orange dashed</span> = MC mean
+        </div>
+        <svg id="hist-svg" style="width:100%; height:170px; display:block; overflow:visible;"></svg>
+      </div>
+
+      <!-- Histogram interpretation -->
+      <div style="margin-top:12px; background:#f0f7f2; border:1px solid #b7e4c7; border-radius:8px; padding:12px 16px; font-size:12px; color:#2D3748; line-height:1.7;">
+        <div style="font-weight:700; color:#1B4332; margin-bottom:6px;">📖 How to read this chart</div>
+        <p style="margin:0 0 6px 0;">The x-axis shows <strong>R</strong> — the expected number of insect death-experiences prevented per dollar — on a <strong>logarithmic scale</strong> (powers of 10). Because the inputs are uncertain and span many orders of magnitude, the result can range from tens to hundreds of millions; a log scale makes the full distribution visible at once.</p>
+        <p style="margin:0 0 6px 0;">The <strong>green bars</strong> are a Monte Carlo distribution: 10,000 simulations drawn randomly from the uncertainty ranges described in the original model (Brian Tomasik). Each bar shows how often R fell in that range — a tall bar means that outcome is more probable under those priors. Bars to the <em>left</em> of your red line are shaded lighter to help you see where your estimate sits relative to the distribution.</p>
+        <p style="margin:0 0 6px 0;">The <span style="color:#C44E52; font-weight:700;">red vertical line</span> is <strong>your point estimate</strong> — the single value of R computed directly from your slider settings. If it falls near the center of the distribution, your assumptions are typical. If it falls in the tail, your assumptions are more optimistic or pessimistic than the model average.</p>
+        <p style="margin:0;">The <span style="color:#F4A261; font-weight:700;">orange dashed line</span> is the <strong>Monte Carlo mean</strong> — the average R across all 10,000 simulations using the original priors. Compare it to your red line to see how your assumptions differ from the model defaults.</p>
+      </div>
+
+      <!-- Notes -->
+      <div style="margin-top:10px; background:#f8f9fa; border-radius:8px; padding:10px 14px; font-size:11px; color:#666; line-height:1.6;">
+        <strong>⚠️ Model ignores:</strong> fixed research costs · administrative overhead · farmer outreach · compliance monitoring.
+        MC priors: ln(<em>p</em>) ~ U[−6, −0.5] · ln(<em>n</em>) ~ N(15, 2) · <em>f</em> ~ N(0.8, 0.05) · <em>s</em> ~ U[0.3, 0.9] · <em>c</em> ~ U[$1, $8].
+        Adapted from Brian Tomasik, <em>Essays on Reducing Suffering</em>.
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // ── Normal sample (Box-Muller) ──
+  function randn(m,sd){
+    var u=0,v=0;
+    while(u===0) u=Math.random();
+    while(v===0) v=Math.random();
+    return m+sd*Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+  }
+
+  // ── Format numbers ──
+  function fmt(x){
+    if(x===undefined||isNaN(x)) return '—';
+    if(x>=1e12) return (x/1e12).toFixed(2)+'T';
+    if(x>=1e9)  return (x/1e9).toFixed(2)+'B';
+    if(x>=1e6)  return (x/1e6).toFixed(2)+'M';
+    if(x>=1e3)  return (x/1e3).toFixed(1)+'K';
+    if(x>=1)    return x.toFixed(1);
+    if(x>=0.001) return x.toFixed(4);
+    return x.toExponential(2);
+  }
+
+  // ── Pre-generate MC samples (run once) ──
+  var N=10000;
+  var sp=[],sn=[],sf=[],ss=[],sc=[];
+  for(var i=0;i<N;i++){
+    sp.push(Math.exp(-6+Math.random()*5.5));
+    sn.push(Math.exp(randn(15,2)));
+    sf.push(Math.max(0.01,Math.min(0.99,randn(0.8,0.05))));
+    ss.push(0.3+Math.random()*0.6);
+    sc.push(1+Math.random()*7);
+  }
+  var mcR=sp.map(function(p,i){ return p*sn[i]*sf[i]*(1-ss[i])/sc[i]; });
+  var mcLogR=mcR.map(function(r){ return Math.log10(Math.max(r,1e-6)); });
+  var LO=Math.floor(Math.min.apply(null,mcLogR));
+  var HI=Math.ceil(Math.max.apply(null,mcLogR));
+  var NBINS=48;
+  var bins=new Array(NBINS).fill(0);
+  mcLogR.forEach(function(v){
+    var idx=Math.floor((v-LO)/(HI-LO)*NBINS);
+    idx=Math.max(0,Math.min(NBINS-1,idx));
+    bins[idx]++;
+  });
+  var maxB=Math.max.apply(null,bins);
+  var mcMeanLogR=mcLogR.reduce(function(a,b){return a+b;},0)/N;
+
+  // ── Draw histogram ──
+  function drawHist(peLR){
+    var svg=document.getElementById('hist-svg');
+    if(!svg) return;
+    var W=svg.getBoundingClientRect().width||600;
+    var H=170;
+    var pl=44,pr=12,pt=10,pb=28;
+    var cw=W-pl-pr, ch=H-pt-pb;
+    var bw=cw/NBINS;
+    var html='';
+
+    // bars
+    for(var i=0;i<NBINS;i++){
+      var bh=(bins[i]/maxB)*ch;
+      var x=pl+i*bw, y=pt+ch-bh;
+      var lv=LO+(i+0.5)*(HI-LO)/NBINS;
+      var col=lv<=peLR?'#74C69D':'#2D6A4F';
+      html+='<rect x="'+x+'" y="'+y+'" width="'+(bw-0.5)+'" height="'+bh+'" fill="'+col+'" opacity="0.82"/>';
+    }
+
+    // axes
+    html+='<line x1="'+pl+'" y1="'+(pt+ch)+'" x2="'+(pl+cw)+'" y2="'+(pt+ch)+'" stroke="#ddd" stroke-width="1"/>';
+    html+='<line x1="'+pl+'" y1="'+pt+'" x2="'+pl+'" y2="'+(pt+ch)+'" stroke="#ddd" stroke-width="1"/>';
+
+    // x ticks
+    for(var t=LO;t<=HI;t++){
+      var tx=pl+(t-LO)/(HI-LO)*cw;
+      html+='<line x1="'+tx+'" y1="'+(pt+ch)+'" x2="'+tx+'" y2="'+(pt+ch+4)+'" stroke="#bbb" stroke-width="1"/>';
+      html+='<text x="'+tx+'" y="'+(pt+ch+16)+'" text-anchor="middle" font-size="9" fill="#888">10<tspan dy="-4" font-size="7">'+t+'</tspan></text>';
+    }
+
+    // y label
+    html+='<text x="10" y="'+(pt+ch/2)+'" text-anchor="middle" font-size="9" fill="#aaa" transform="rotate(-90,10,'+(pt+ch/2)+')">Frequency</text>';
+
+    // MC mean line
+    var mx=pl+(mcMeanLogR-LO)/(HI-LO)*cw;
+    html+='<line x1="'+mx+'" y1="'+pt+'" x2="'+mx+'" y2="'+(pt+ch)+'" stroke="#F4A261" stroke-width="2" stroke-dasharray="5,3"/>';
+    html+='<text x="'+(mx+4)+'" y="'+(pt+13)+'" font-size="9" fill="#F4A261">MC mean</text>';
+
+    // Point estimate line
+    var px=pl+(peLR-LO)/(HI-LO)*cw;
+    px=Math.max(pl,Math.min(pl+cw,px));
+    html+='<line x1="'+px+'" y1="'+pt+'" x2="'+px+'" y2="'+(pt+ch)+'" stroke="#C44E52" stroke-width="2.5"/>';
+    var lblX=px+5>pl+cw-50?px-5:px+5;
+    var anchor=px+5>pl+cw-50?'end':'start';
+    html+='<text x="'+lblX+'" y="'+(pt+25)+'" text-anchor="'+anchor+'" font-size="9" fill="#C44E52" font-weight="600">Your estimate</text>';
+
+    svg.innerHTML=html;
+  }
+
+  // ── Main update function ──
+  function wSim(){
+    var p  = parseFloat(document.getElementById('sl-p').value);
+    var lnn= parseFloat(document.getElementById('sl-n').value);
+    var n  = Math.exp(lnn);
+    var f  = parseFloat(document.getElementById('sl-f').value);
+    var s  = parseFloat(document.getElementById('sl-s').value);
+    var c  = parseFloat(document.getElementById('sl-c').value);
+    var ff = parseFloat(document.getElementById('sl-ff').value);
+
+    // Update labels
+    document.getElementById('lbl-p').textContent = p.toFixed(3);
+    document.getElementById('lbl-n').textContent = n>=1e6?(n/1e6).toFixed(1)+'M':(n/1e3).toFixed(0)+'K';
+    document.getElementById('lbl-f').textContent = f.toFixed(2);
+    document.getElementById('lbl-s').innerHTML   = s.toFixed(2)+' <span style="font-weight:400;color:#888;">('+Math.round((1-s)*100)+'% reduction)</span>';
+    document.getElementById('lbl-c').textContent = '$'+c.toFixed(1);
+    document.getElementById('lbl-ff').textContent= ff.toFixed(1);
+
+    // R point estimate
+    var R = p*n*f*(1-s)/c;
+
+    // Cost per factory-farm year:
+    // R death-exp/$ ; 1 death-exp = ff days ; 1 year = 365 days
+    // years_per_dollar = R * ff / 365 → cost_per_year = 1 / (R*ff/365)
+    var cost_per_yr = 365/(R*ff);
+
+    // Update stat cards
+    document.getElementById('st-R').textContent    = fmt(R);
+    document.getElementById('st-cost').textContent = '$'+fmt(cost_per_yr);
+    document.getElementById('st-sr').textContent   = Math.round((1-s)*100)+'%';
+    document.getElementById('formula-live').textContent = fmt(R);
+
+    // ── Farmer plain-language translation ──
+    var farmEl = document.getElementById('sl-farm');
+    var farm_ha = farmEl ? Math.max(1, parseFloat(farmEl.value)||50) : 50;
+    var insects_helped  = p * n * f * (1 - s) * farm_ha;
+    var subsidy_total   = c * farm_ha;
+    var cost_per_1000   = 1000 / R;
+    var reduction_pct   = Math.round((1-s)*100);
+    var insects_per_ha  = Math.round(p * n * f * (1-s));
+
+    function fmtI(x){
+      if(x>=1e9)  return (x/1e9).toFixed(1)+' billion';
+      if(x>=1e6)  return (x/1e6).toFixed(1)+' million';
+      if(x>=1e3)  return (x/1e3).toFixed(0)+' thousand';
+      return Math.round(x).toString();
+    }
+
+    var farmerHTML =
+      '<p style="margin:0 0 6px 0;">'+
+        'On a <strong>'+farm_ha+'-hectare farm</strong>, switching to the more humane pesticide this season would spare roughly '+
+        '<strong>'+fmtI(insects_helped)+' insects</strong> from a more painful death — about '+
+        '<strong>'+fmtI(insects_per_ha)+' per hectare</strong>.'+
+      '</p>'+
+      '<p style="margin:0 0 6px 0;">'+
+        'The pesticide switch is <strong>'+reduction_pct+'% less painful</strong> per unit of time, meaning insects die faster and suffer less overall. '+
+        'Both pesticides kill roughly the same number of insects — only the experience of dying changes.'+
+      '</p>'+
+      '<p style="margin:0 0 6px 0;">'+
+        'A subsidy program would pay you <strong>$'+subsidy_total.toFixed(0)+'</strong> per season to cover the extra cost ($'+c.toFixed(0)+'/hectare). '+
+        'That works out to <strong>$'+fmt(cost_per_1000)+' per 1,000 insects helped</strong> — or put another way, '+
+        'every dollar of subsidy benefits approximately <strong>'+fmtI(R)+' insects</strong>.'+
+      '</p>'+
+      '<p style="margin:0; color:#888; font-size:11px;">'+
+        '⚠️ These numbers assume a probability of '+p.toFixed(3)+' that insects are sentient. '+
+        'If insects do not feel pain (p = 0), the benefit is zero regardless of the pesticide used.'+
+      '</p>';
+
+    document.getElementById('farmer-text').innerHTML = farmerHTML;
+
+    drawHist(Math.log10(Math.max(R,1e-6)));
+  }
+
+  // ── Reset to defaults ──
+  function wReset(){
+    document.getElementById('sl-p').value  = 0.1;
+    document.getElementById('sl-n').value  = 15;
+    document.getElementById('sl-f').value  = 0.8;
+    document.getElementById('sl-s').value  = 0.5;
+    document.getElementById('sl-c').value  = 4.5;
+    document.getElementById('sl-ff').value = 2.0;
+    wSim();
+  }
+
+  // Expose globally (called from oninput)
+  window.wSim=wSim;
+  window.wReset=wReset;
+
+  // Init
+  wSim();
+  window.addEventListener('resize', function(){ wSim(); });
+})();
+</script>
 ```
